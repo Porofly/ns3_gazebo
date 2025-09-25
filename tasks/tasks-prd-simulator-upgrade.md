@@ -27,10 +27,23 @@
 
 ## Tasks
 
-- [ ] **1.0 사전 조사 및 개발 환경 설정**
-  - [ ] 1.1 ns-3.45와 Gazebo Harmonic(Ignition Gazebo)을 개발 환경에 설치하고 기본 예제가 동작하는지 확인합니다.
-  - [ ] 1.2 ns-3.29에서 3.45까지의 릴리스 노트를 검토하여 이 프로젝트와 관련된 주요 API 변경점(특히 `TapBridge`, `WifiHelper`, `RealtimeSimulatorImpl`) 목록을 작성합니다.
-  - [ ] 1.3 Gazebo 9에서 Gazebo Harmonic으로의 마이그레이션 가이드를 검토하여 플러그인 API(`WorldPlugin` -> `System`), SDF 버전, ROS-Gazebo 브리지 관련 변경점 목록을 작성합니다.
+- [x] **1.0 사전 조사 및 개발 환경 설정**
+  - [x] 1.1 ns-3.45와 Gazebo Harmonic(Ignition Gazebo)을 개발 환경에 설치하고 기본 예제가 동작하는지 확인합니다.
+  - [x] 1.2 ns-3.29에서 3.45까지의 릴리스 노트를 검토하여 이 프로젝트와 관련된 주요 API 변경점(특히 `TapBridge`, `WifiHelper`, `RealtimeSimulatorImpl`) 목록을 작성합니다.
+    - **주요 변경점 요약:**
+        - **빌드 시스템 (ns-3.36):** Waf에서 CMake로 완전 전환.
+        - **Wi-Fi 모듈 (ns-3.34):** 802.11ax 지원을 위한 대대적인 리팩토링. `WifiHelper` 사용법 변경 가능성 높음.
+        - **PTHREAD 대체 (ns-3.36):** `SystemMutex`, `SystemThread` 등이 C++ STL (`std::mutex`, `std::thread`)로 대체됨. `RealtimeSimulatorImpl` 수정 시 영향.
+        - **Python 바인딩 (ns-3.37):** Pybindgen에서 Cppyy로 변경.
+        - **코딩 스타일 (ns-3.37):** 전반적인 코드 스타일 업데이트.
+  - [x] 1.3 Gazebo 9에서 Gazebo Harmonic으로의 마이그레이션 가이드를 검토하여 플러그인 API(`WorldPlugin` -> `System`), SDF 버전, ROS-Gazebo 브리지 관련 변경점 목록을 작성합니다.
+    - **주요 변경점 요약:**
+        - **아키텍처:** 모놀리식 구조에서 독립적인 라이브러리 집합(Ignition)으로 변경.
+        - **ROS 2 연동:** `gazebo_ros_pkgs` 대신 `ros_gz` 브리지 사용.
+        - **플러그인:** `gazebo::WorldPlugin` -> `gz::sim::System`으로 API 변경. 기존 플러그인 재작성 필요.
+        - **SDF:** World/Model 파일의 SDF 형식 업데이트 필요.
+        - **환경 변수:** `GAZEBO_MODEL_PATH` -> `GZ_SIM_RESOURCE_PATH`로 변경.
+        - **CLI:** `gazebo` -> `gz sim`으로 변경.
 
 - [ ] **2.0 빌드 시스템 (CMake) 업그레이드**
   - [ ] 2.1 `Relevant Files`에 명시된 모든 `CMakeLists.txt` 파일에서 `find_package` 명령을 수정하여 새로운 버전의 ns-3 및 Gazebo 라이브러리를 찾도록 변경합니다.
