@@ -18,3 +18,6 @@ log/
 build/
 dist/
 
+# ns-3 
+ns-allinone-3.45/ns-3.45/cmake-cache
+ns-allinone-3.45/ns-3.45/.lock-ns3_linux_build
