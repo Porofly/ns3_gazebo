@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
-  Gazebo ROS differential drive plugin demo
+  Gazebo Harmonic ROS differential drive plugin demo
 
   Try sending commands:
 
@@ -20,7 +20,7 @@
 
     ros2 run tf2_ros tf2_echo chassis left_wheel
 -->
-<sdf version="1.6">
+<sdf version="1.8">
   <world name="default">
 
     <include>

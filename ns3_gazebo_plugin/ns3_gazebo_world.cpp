@@ -1,10 +1,15 @@
 #include <cstdio>
-//#include <memory>
-//#include <string>
+#include <thread>
+#include <iostream>
 
-#include <gazebo/gazebo.hh>
-#include <gazebo/physics/physics.hh>
-#include <ignition/math/Pose3.hh>
+#include <gz/sim/Server.hh>
+#include <gz/sim/World.hh>
+#include <gz/sim/Model.hh>
+#include <gz/sim/Entity.hh>
+#include <gz/sim/System.hh>
+#include <gz/sim/components.hh>
+#include <gz/math/Pose3.hh>
+#include <sdf/Element.hh>
 
 #include "ns3/core-module.h"
 #include "ns3/node-container.h"
@@ -74,53 +79,48 @@ static void ns3_thread_function(void) {
   std::cout << "Ending ns-3 Wifi simulator in thread.\n";
 }
 
-class NS3GazeboWorld : public gazebo::WorldPlugin {
+class NS3GazeboWorld : public gz::sim::System,
+                       public gz::sim::ISystemConfigure,
+                       public gz::sim::ISystemUpdate {
   private:
   ns3::NodeContainer ns3_nodes;
   std::thread ns3_thread;
-//  std::thread ns3_thread(ns3_thread_function);
-  gazebo::physics::ModelPtr model_ptr;
-  gazebo::event::ConnectionPtr update_connection;
+  gz::sim::Entity model_entity;
 
   public:
-  NS3GazeboWorld() : gazebo::WorldPlugin(), 
-                     ns3_nodes(), ns3_thread(),
-                     model_ptr(0), update_connection(0) {
-    printf("Hello World!\n");
+  NS3GazeboWorld() {
+    std::cout << "NS3GazeboWorld Plugin Constructor\n";
   }
 
   ~NS3GazeboWorld() {
-    if (&ns3_thread != NULL) {
+    if (ns3_thread.joinable()) {
       ns3_thread.join(); // gracefully let the robot thread stop
       std::cout << "Stopped ns-3 Wifi simulator in main.\n";
     }
   }
 
-  void OnUpdate(const gazebo::common::UpdateInfo& _info) {
-    ignition::math::Pose3d pose = model_ptr->WorldPose();
-    float x = pose.Pos().X();
-//    std::cout << "OnUpdate Point.x: " << x << "\n";
-  }
+  void Configure(const gz::sim::Entity &_entity,
+                 const std::shared_ptr<const sdf::Element> &_sdf,
+                 gz::sim::EntityComponentManager &_ecm,
+                 gz::sim::EventManager &_eventMgr) override {
+    std::cout << "NS3GazeboWorld Plugin Configure\n";
 
-  void Init() {
-    std::cout << "Init\n";
-  }
-
-  void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf) {
-    std::cout << "Load: model by name\n";
-    model_ptr = _world->ModelByName("vehicle");
-    ignition::math::Pose3d pose = model_ptr->WorldPose();
-    float x = pose.Pos().X();
-    std::cout << "Load Point.x: " << x << "\n";
-
-    // do every Gazebo simulation iteration
-    update_connection = gazebo::event::Events::ConnectWorldUpdateBegin(
-                    std::bind(&NS3GazeboWorld::OnUpdate,
-                    this, std::placeholders::_1));
-  
-    // ns-3
-//    // create the ns-3 nodes container
-//    ns3::NodeContainer ns3_nodes;
+    // Find vehicle model
+    _ecm.Each<gz::sim::components::Model, gz::sim::components::Name>(
+        [&](const gz::sim::Entity &_entity,
+            const gz::sim::components::Model *,
+            const gz::sim::components::Name *_name) -> bool {
+          if (_name->Data() == "vehicle") {
+            model_entity = _entity;
+            auto poseComp = _ecm.Component<gz::sim::components::Pose>(_entity);
+            if (poseComp) {
+              gz::math::Pose3d pose = poseComp->Data();
+              float x = pose.Pos().X();
+              std::cout << "Configure Point.x: " << x << "\n";
+            }
+          }
+          return true;
+        });
 
     // set up ns-3
     ns3_setup(ns3_nodes);
@@ -131,8 +131,26 @@ class NS3GazeboWorld : public gazebo::WorldPlugin {
     // start the ns3 thread
     ns3_thread = std::thread(ns3_thread_function);
   }
+
+  void Update(const gz::sim::UpdateInfo &_info,
+              gz::sim::EntityComponentManager &_ecm) override {
+    // Update logic here - get vehicle pose
+    if (model_entity != gz::sim::kNullEntity) {
+      auto poseComp = _ecm.Component<gz::sim::components::Pose>(model_entity);
+      if (poseComp) {
+        gz::math::Pose3d pose = poseComp->Data();
+        float x = pose.Pos().X();
+        // Uncomment for debugging: std::cout << "OnUpdate Point.x: " << x << "\n";
+      }
+    }
+  }
 };
-GZ_REGISTER_WORLD_PLUGIN(NS3GazeboWorld)
 
-} // namespace
+} // namespace ns3_gazebo_world
 
+#include <gz/plugin/Register.hh>
+
+GZ_ADD_PLUGIN(ns3_gazebo_world::NS3GazeboWorld,
+              gz::sim::System,
+              ns3_gazebo_world::NS3GazeboWorld::ISystemConfigure,
+              ns3_gazebo_world::NS3GazeboWorld::ISystemUpdate)

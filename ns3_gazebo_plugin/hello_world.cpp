@@ -1,45 +1,54 @@
-#include <gazebo/gazebo.hh>
-#include <gazebo/physics/physics.hh>
-#include <ignition/math/Pose3.hh>
+#include <gz/sim/Server.hh>
+#include <gz/sim/World.hh>
+#include <gz/sim/Model.hh>
+#include <gz/sim/System.hh>
+#include <gz/sim/components.hh>
+#include <gz/math/Pose3.hh>
+#include <sdf/Element.hh>
+#include <iostream>
 
 namespace ns3_gazebo {
 
-class WorldPluginTutorial : public gazebo::WorldPlugin {
-  private:
-  gazebo::physics::ModelPtr model_ptr;
-  gazebo::event::ConnectionPtr update_connection;
-
+class WorldPluginTutorial : public gz::sim::System,
+                             public gz::sim::ISystemConfigure,
+                             public gz::sim::ISystemUpdate {
   public:
-  WorldPluginTutorial() : gazebo::WorldPlugin(), model_ptr(0),
-                          update_connection(0) {
+  WorldPluginTutorial() {
     printf("Hello World!\n");
   }
 
-  void OnUpdate(const gazebo::common::UpdateInfo& _info) {
-    ignition::math::Pose3d pose = model_ptr->WorldPose();
-    float x = pose.Pos().X();
-    std::cout << "OnUpdate Point.x: " << x << "\n";
+  void Configure(const gz::sim::Entity &_entity,
+                 const std::shared_ptr<const sdf::Element> &_sdf,
+                 gz::sim::EntityComponentManager &_ecm,
+                 gz::sim::EventManager &_eventMgr) override {
+    std::cout << "Configure: Gazebo Harmonic World Plugin\n";
   }
 
-  void Init() {
-    std::cout << "Init\n";
-  }
-
-  void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf) {
-    std::cout << "Load: model by name\n";
-    model_ptr = _world->ModelByName("vehicle");
-    ignition::math::Pose3d pose = model_ptr->WorldPose();
-    float x = pose.Pos().X();
-    std::cout << "Load Point.x: " << x << "\n";
-
-    // do every simulation iteration
-    update_connection = gazebo::event::Events::ConnectWorldUpdateBegin(
-                    std::bind(&WorldPluginTutorial::OnUpdate,
-                    this, std::placeholders::_1));
-  
+  void Update(const gz::sim::UpdateInfo &_info,
+              gz::sim::EntityComponentManager &_ecm) override {
+    // Update logic here - example of getting model pose
+    _ecm.Each<gz::sim::components::Model, gz::sim::components::Name>(
+        [&](const gz::sim::Entity &_entity,
+            const gz::sim::components::Model *,
+            const gz::sim::components::Name *_name) -> bool {
+          if (_name->Data() == "vehicle") {
+            auto poseComp = _ecm.Component<gz::sim::components::Pose>(_entity);
+            if (poseComp) {
+              gz::math::Pose3d pose = poseComp->Data();
+              float x = pose.Pos().X();
+              std::cout << "OnUpdate Point.x: " << x << "\n";
+            }
+          }
+          return true;
+        });
   }
 };
-GZ_REGISTER_WORLD_PLUGIN(WorldPluginTutorial)
 
-} // namespace
+} // namespace ns3_gazebo
 
+#include <gz/plugin/Register.hh>
+
+GZ_ADD_PLUGIN(ns3_gazebo::WorldPluginTutorial,
+              gz::sim::System,
+              ns3_gazebo::WorldPluginTutorial::ISystemConfigure,
+              ns3_gazebo::WorldPluginTutorial::ISystemUpdate)
