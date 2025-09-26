@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 
   // Wifi settings
   ns3::WifiHelper wifi;
-  wifi.SetStandard(ns3::WIFI_PHY_STANDARD_80211b);
+  wifi.SetStandard(ns3::WIFI_STANDARD_80211b);
   wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
 
   // wifi MAC
@@ -107,9 +107,8 @@ int main(int argc, char *argv[]) {
 
 
   // physical layer
-  ns3::YansWifiChannelHelper wifiChannel(
-                                 ns3::YansWifiChannelHelper::Default());
-  ns3::YansWifiPhyHelper wifiPhy(ns3::YansWifiPhyHelper::Default());
+  ns3::YansWifiChannelHelper wifiChannel;
+  ns3::YansWifiPhyHelper wifiPhy;
   wifiPhy.SetChannel(wifiChannel.Create());
 
   // ssid for Infrastructure mode

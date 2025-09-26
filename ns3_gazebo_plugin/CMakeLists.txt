@@ -2,18 +2,18 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 find_package(gazebo REQUIRED)
 include_directories(${GAZEBO_INCLUDE_DIRS})
-include_directories(src ~/repos/ns-3-allinone/ns-3.29/build)
+include_directories(src ${CMAKE_CURRENT_SOURCE_DIR}/../ns-allinone-3.45/ns-3.45/build/include)
 link_directories(${GAZEBO_LIBRARY_DIRS})
-link_directories(~/repos/ns-3-allinone/ns-3.29/build/lib)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../ns-allinone-3.45/ns-3.45/build/lib)
 list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
 add_library(diff_drive_ns3_gazebo SHARED ns3_gazebo_world.cpp)
 target_link_libraries(diff_drive_ns3_gazebo ${GAZEBO_LIBRARIES}
-  ns3.29-core-debug
-  ns3.29-network-debug
-  ns3.29-internet-debug
-  ns3.29-wifi-debug
-  ns3.29-mobility-debug
-  ns3.29-tap-bridge-debug
+  ns3.45-core-default
+  ns3.45-network-default
+  ns3.45-internet-default
+  ns3.45-wifi-default
+  ns3.45-mobility-default
+  ns3.45-tap-bridge-default
 )
 

@@ -1,16 +1,20 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
-include_directories(src ~/repos/ns-3-allinone/ns-3.29/build)
-link_directories(~/repos/ns-3-allinone/ns-3.29/build/lib)
+# Set C++ standard to C++20 for NS-3 3.45 compatibility
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include_directories(src ${CMAKE_CURRENT_SOURCE_DIR}/../../ns-allinone-3.45/ns-3.45/build/include)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../ns-allinone-3.45/ns-3.45/build/lib)
 list(APPEND CMAKE_CXX_FLAGS)
 
 add_executable(ns3_mobility ns3_mobility.cpp)
 target_link_libraries(ns3_mobility
-  ns3.29-core-debug
-  ns3.29-network-debug
-  ns3.29-internet-debug
-  ns3.29-wifi-debug
-  ns3.29-mobility-debug
-  ns3.29-tap-bridge-debug
+  ns3.45-core-default
+  ns3.45-network-default
+  ns3.45-internet-default
+  ns3.45-wifi-default
+  ns3.45-mobility-default
+  ns3.45-tap-bridge-default
 )
 

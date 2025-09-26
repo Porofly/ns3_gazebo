@@ -18,3 +18,5 @@ log/
 build/
 dist/
 
+ns3_gazebo/ns-allinone-3.45/ns-3.45/cmake-cache
+ns3_gazebo/ns-allinone-3.45/ns-3.45/.lock-ns3_linux_build
