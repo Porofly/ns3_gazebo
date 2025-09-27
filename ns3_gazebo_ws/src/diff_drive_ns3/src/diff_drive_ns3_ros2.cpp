@@ -1,4 +1,14 @@
-// adapted from https://raw.githubusercontent.com/ros2/demos/master/demo_nodes_cpp/src/topics/listener.cpp
+/**
+ * @file diff_drive_ns3_ros2.cpp
+ * @brief ROS2 Integration with NS-3 Network Simulation
+ *
+ * UPGRADE NOTES (NS-3 3.29 → 3.45, ROS2 Jazzy compatibility):
+ * - Updated WiFi Standard API for NS-3 3.45
+ * - Fixed ObjectFactory initialization patterns
+ * - Compatible with ROS2 Jazzy QoS parameters
+ *
+ * Adapted from https://raw.githubusercontent.com/ros2/demos/master/demo_nodes_cpp/src/topics/listener.cpp
+ */
 
 #include <cstdio>
 #include <memory>

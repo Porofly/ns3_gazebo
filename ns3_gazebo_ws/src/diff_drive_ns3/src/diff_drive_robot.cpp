@@ -1,4 +1,13 @@
-// Adapted from https://github.com/ros-planning/navigation2/blob/master/nav2_robot/src/robot.cpp
+/**
+ * @file diff_drive_robot.cpp
+ * @brief ROS2 Differential Drive Robot Integration
+ *
+ * UPGRADE NOTES (ROS2 Jazzy compatibility):
+ * - Added QoS parameter to create_subscription for ROS2 Jazzy compatibility
+ * - Updated subscription pattern: create_subscription(topic, qos, callback)
+ *
+ * Adapted from https://github.com/ros-planning/navigation2/blob/master/nav2_robot/src/robot.cpp
+ */
 
 #include "diff_drive_robot.hpp"
 

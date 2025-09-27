@@ -1,7 +1,20 @@
+/**
+ * @file ns3_gazebo_world.cpp
+ * @brief NS-3 WiFi Network Simulator Integration with Gazebo Harmonic
+ *
+ * UPGRADE NOTES (NS-3 3.29 → 3.45, Gazebo Classic → Harmonic):
+ * - Migrated from gazebo::WorldPlugin to gz::sim::System architecture
+ * - Updated WiFi Standard API: WIFI_PHY_STANDARD_* → WIFI_STANDARD_*
+ * - Changed namespace: gazebo → gz::sim, ignition → gz
+ * - Updated Helper initialization: YansWifiChannelHelper::Default() pattern
+ * - Added C++20 standard support for NS-3 3.45 compatibility
+ */
+
 #include <cstdio>
 #include <thread>
 #include <iostream>
 
+// Gazebo Harmonic headers (updated from Gazebo Classic)
 #include <gz/sim/Server.hh>
 #include <gz/sim/World.hh>
 #include <gz/sim/Model.hh>
@@ -32,13 +45,15 @@ void ns3_setup(ns3::NodeContainer& ns3_nodes) {
   // Create ns3_nodes
   ns3_nodes.Create(COUNT);
 
-  // physical layer - use default configuration to avoid ObjectFactory issues
+  // Physical layer - use default configuration to avoid ObjectFactory issues
+  // UPGRADE: Changed from default constructor to Default() method for NS-3 3.45 compatibility
   ns3::YansWifiChannelHelper wifiChannel = ns3::YansWifiChannelHelper::Default();
   ns3::YansWifiPhyHelper wifiPhy;
   wifiPhy.SetChannel(wifiChannel.Create());
 
-  // Wifi settings
+  // WiFi settings
   ns3::WifiHelper wifi;
+  // UPGRADE: Updated API from WIFI_PHY_STANDARD_80211a to WIFI_STANDARD_80211a (NS-3 3.45)
   wifi.SetStandard(ns3::WIFI_STANDARD_80211a);
   wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
                           "DataMode", ns3::StringValue("OfdmRate54Mbps"));
