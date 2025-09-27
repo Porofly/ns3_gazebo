@@ -7,10 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Gazebo Harmonic packages - use find_package without version first
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GZ_SIM REQUIRED gz-sim)
-pkg_check_modules(GZ_MATH REQUIRED gz-math)
-pkg_check_modules(GZ_PLUGIN REQUIRED gz-plugin)
-pkg_check_modules(SDFORMAT REQUIRED sdformat)
+pkg_check_modules(GZ_SIM REQUIRED gz-sim8)
+pkg_check_modules(GZ_MATH REQUIRED gz-math7)
+pkg_check_modules(GZ_PLUGIN REQUIRED gz-plugin2)
+pkg_check_modules(SDFORMAT REQUIRED sdformat14)
 
 # NS-3 paths
 include_directories(src ${CMAKE_CURRENT_SOURCE_DIR}/../ns-allinone-3.45/ns-3.45/build/include)

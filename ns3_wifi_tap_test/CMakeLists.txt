@@ -5,9 +5,12 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Add safe compilation flags to avoid illegal instruction
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -march=x86-64 -mtune=generic")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -march=x86-64 -mtune=generic")
+
 include_directories(src ${CMAKE_CURRENT_SOURCE_DIR}/../ns-allinone-3.45/ns-3.45/build/include)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../ns-allinone-3.45/ns-3.45/build/lib)
-list(APPEND CMAKE_CXX_FLAGS)
 
 add_executable(ns3_wifi_tap_test ns3_wifi_tap_test.cpp)
 target_link_libraries(ns3_wifi_tap_test 

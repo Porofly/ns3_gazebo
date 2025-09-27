@@ -32,6 +32,11 @@ void ns3_setup(ns3::NodeContainer& ns3_nodes) {
   // Create ns3_nodes
   ns3_nodes.Create(COUNT);
 
+  // physical layer - use default configuration to avoid ObjectFactory issues
+  ns3::YansWifiChannelHelper wifiChannel = ns3::YansWifiChannelHelper::Default();
+  ns3::YansWifiPhyHelper wifiPhy;
+  wifiPhy.SetChannel(wifiChannel.Create());
+
   // Wifi settings
   ns3::WifiHelper wifi;
   wifi.SetStandard(ns3::WIFI_STANDARD_80211a);
@@ -41,11 +46,6 @@ void ns3_setup(ns3::NodeContainer& ns3_nodes) {
   // ad-hoc Wifi network
   ns3::WifiMacHelper wifiMac;
   wifiMac.SetType("ns3::AdhocWifiMac");
-
-  // physical layer
-  ns3::YansWifiChannelHelper wifiChannel;
-  ns3::YansWifiPhyHelper wifiPhy;
-  wifiPhy.SetChannel(wifiChannel.Create());
 
   // Install the wireless devices onto our ghost ns3_nodes.
   ns3::NetDeviceContainer devices = wifi.Install(wifiPhy, wifiMac, ns3_nodes);
