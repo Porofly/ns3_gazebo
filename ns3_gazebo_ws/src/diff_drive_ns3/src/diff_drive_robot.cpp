@@ -12,7 +12,9 @@ DiffDriveRobot::DiffDriveRobot(rclcpp::Node::SharedPtr & _rclcpp_node,
             rclcpp_node(_rclcpp_node), ns3_nodes(_ns3_nodes)
 {
   odom_sub_ = rclcpp_node->create_subscription<nav_msgs::msg::Odometry>(
-    "/demo/odom_demo", std::bind(&DiffDriveRobot::onOdomReceived, this, std::placeholders::_1));
+    "/demo/odom_demo",
+    rclcpp::QoS(10),
+    std::bind(&DiffDriveRobot::onOdomReceived, this, std::placeholders::_1));
 }
 
 void

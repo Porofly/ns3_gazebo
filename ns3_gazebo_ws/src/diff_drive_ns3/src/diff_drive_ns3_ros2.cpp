@@ -31,8 +31,8 @@ void set_up_ns3(ns3::NodeContainer& ns3_nodes) {
   ns3::WifiMacHelper wifiMac;
   wifiMac.SetType("ns3::AdhocWifiMac");
 
-  // physical layer
-  ns3::YansWifiChannelHelper wifiChannel;
+  // physical layer - use default configuration to avoid ObjectFactory issues
+  ns3::YansWifiChannelHelper wifiChannel = ns3::YansWifiChannelHelper::Default();
   ns3::YansWifiPhyHelper wifiPhy;
   wifiPhy.SetChannel(wifiChannel.Create());
 

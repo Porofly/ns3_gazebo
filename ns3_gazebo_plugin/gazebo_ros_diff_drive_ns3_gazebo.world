@@ -23,6 +23,14 @@
 <sdf version="1.8">
   <world name="default">
 
+    <!-- Essential world plugins for Gazebo Harmonic -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+
     <!-- Basic ground plane -->
     <model name='ground_plane'>
       <static>true</static>
@@ -66,7 +74,7 @@
     </light>
 
     <model name='vehicle'>
-      <pose>0 0 0.325 0 -0 0</pose>
+      <pose>0 0 0.5 0 0 0</pose>
 
       <link name='chassis'>
         <pose>-0.151427 -0 0.175 0 -0 0</pose>
@@ -87,6 +95,11 @@
               <size>2.01142 1 0.568726</size>
             </box>
           </geometry>
+          <material>
+            <ambient>0.2 0.2 0.8 1</ambient>
+            <diffuse>0.2 0.2 0.8 1</diffuse>
+            <specular>0.1 0.1 0.3 1</specular>
+          </material>
         </visual>
         <collision name='collision'>
           <geometry>
@@ -116,6 +129,11 @@
               <radius>0.3</radius>
             </sphere>
           </geometry>
+          <material>
+            <ambient>0.1 0.1 0.1 1</ambient>
+            <diffuse>0.2 0.2 0.2 1</diffuse>
+            <specular>0.4 0.4 0.4 1</specular>
+          </material>
         </visual>
         <collision name='collision'>
           <geometry>
@@ -253,34 +271,21 @@
         <child>caster</child>
       </joint>
 
-      <plugin name='diff_drive' filename='libgazebo_ros_diff_drive.so'>
-
-        <ros>
-          <namespace>/demo</namespace>
-          <argument>cmd_vel:=cmd_demo</argument>
-          <argument>odom:=odom_demo</argument>
-        </ros>
-
-        <!-- wheels -->
+      <!-- Gazebo Harmonic native diff_drive plugin -->
+      <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
         <left_joint>left_wheel_joint</left_joint>
         <right_joint>right_wheel_joint</right_joint>
-
-        <!-- kinematics -->
         <wheel_separation>1.25</wheel_separation>
-        <wheel_diameter>0.6</wheel_diameter>
-
-        <!-- limits -->
-        <max_wheel_torque>20</max_wheel_torque>
-        <max_wheel_acceleration>1.0</max_wheel_acceleration>
-
-        <!-- output -->
-        <publish_odom>true</publish_odom>
-        <publish_odom_tf>true</publish_odom_tf>
-        <publish_wheel_tf>true</publish_wheel_tf>
-
-        <odometry_frame>odom_demo</odometry_frame>
-        <robot_base_frame>chassis</robot_base_frame>
-
+        <wheel_radius>0.3</wheel_radius>
+        <odom_publish_frequency>1</odom_publish_frequency>
+        <max_linear_acceleration>1</max_linear_acceleration>
+        <min_linear_acceleration>-1</min_linear_acceleration>
+        <max_angular_acceleration>2</max_angular_acceleration>
+        <min_angular_acceleration>-2</min_angular_acceleration>
+        <max_linear_velocity>0.5</max_linear_velocity>
+        <min_linear_velocity>-0.5</min_linear_velocity>
+        <max_angular_velocity>1</max_angular_velocity>
+        <min_angular_velocity>-1</min_angular_velocity>
       </plugin>
 
     </model>
