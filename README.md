@@ -108,7 +108,7 @@ gz sim gazebo_ros_diff_drive_ns3_gazebo.world
 ```bash
 cd ns3_gazebo_ws
 source install/setup.bash
-ros2 run diff_drive_ns3 diff_drive_ns3_ros2
+ros2 run diff_drive_ns3 diff_drive_ns3_ros2 => ERROR! Need to FIX
 ```
 
 #### 3. Run Complete Testbed
