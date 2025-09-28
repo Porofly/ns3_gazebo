@@ -1,0 +1,275 @@
+<?xml version="1.0" ?>
+<!--
+  Hello World Network Gazebo World File
+
+  This world file creates a simple environment for the hello world
+  network example with two nodes positioned 5 meters apart.
+-->
+
+<sdf version="1.8">
+  <world name="hello_world_network">
+
+    <!-- World physics configuration -->
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <!-- Essential world plugins -->
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics">
+    </plugin>
+
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+
+    <!-- NS-3 Integration Plugin -->
+    <plugin
+      filename="libns3_gazebo_world.so"
+      name="ns3_gazebo_world">
+      <config_file>config/wifi_config.yaml</config_file>
+    </plugin>
+
+    <!-- World lighting -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+            <specular>0.8 0.8 0.8 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- WiFi Node 0 (Sender) -->
+    <model name="wifi_node_0">
+      <pose>0 0 0.5 0 0 0</pose>
+      <static>true</static>
+
+      <link name="base_link">
+        <!-- Node visual representation -->
+        <visual name="node_visual">
+          <geometry>
+            <sphere>
+              <radius>0.15</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <ambient>0.0 1.0 0.0 1</ambient>
+            <diffuse>0.0 1.0 0.0 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+
+        <!-- Collision for selection -->
+        <collision name="node_collision">
+          <geometry>
+            <sphere>
+              <radius>0.15</radius>
+            </sphere>
+          </geometry>
+        </collision>
+
+        <!-- WiFi antenna visual -->
+        <visual name="antenna_visual">
+          <pose>0 0 0.2 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.01</radius>
+              <length>0.3</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.2 0.2 0.2 1</ambient>
+            <diffuse>0.3 0.3 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+
+      <!-- NS-3 WiFi node plugin -->
+      <plugin
+        filename="libns3_gazebo_node.so"
+        name="ns3_gazebo_node">
+        <node_id>0</node_id>
+        <node_type>wifi_station</node_type>
+      </plugin>
+    </model>
+
+    <!-- WiFi Node 1 (Receiver) -->
+    <model name="wifi_node_1">
+      <pose>5 0 0.5 0 0 0</pose>
+      <static>true</static>
+
+      <link name="base_link">
+        <!-- Node visual representation -->
+        <visual name="node_visual">
+          <geometry>
+            <sphere>
+              <radius>0.15</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <ambient>0.0 0.0 1.0 1</ambient>
+            <diffuse>0.0 0.0 1.0 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+
+        <!-- Collision for selection -->
+        <collision name="node_collision">
+          <geometry>
+            <sphere>
+              <radius>0.15</radius>
+            </sphere>
+          </geometry>
+        </collision>
+
+        <!-- WiFi antenna visual -->
+        <visual name="antenna_visual">
+          <pose>0 0 0.2 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.01</radius>
+              <length>0.3</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.2 0.2 0.2 1</ambient>
+            <diffuse>0.3 0.3 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+
+      <!-- NS-3 WiFi node plugin -->
+      <plugin
+        filename="libns3_gazebo_node.so"
+        name="ns3_gazebo_node">
+        <node_id>1</node_id>
+        <node_type>wifi_station</node_type>
+      </plugin>
+    </model>
+
+    <!-- Distance measurement visual aid -->
+    <model name="distance_marker">
+      <pose>2.5 0 0.05 0 0 0</pose>
+      <static>true</static>
+
+      <link name="link">
+        <visual name="line_visual">
+          <geometry>
+            <box>
+              <size>5 0.05 0.05</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>1.0 1.0 0.0 0.5</ambient>
+            <diffuse>1.0 1.0 0.0 0.5</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Information display -->
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>8 -8 6 0 0.4 2.4</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
+
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.4 0.4 0.4</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color>
+        <camera_pose>8 -8 6 0 0.4 2.4</camera_pose>
+      </plugin>
+
+      <plugin filename="WorldControl" name="World control">
+        <gz-gui>
+          <title>World control</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">72</property>
+          <property type="double" key="width">121</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <play_pause>true</play_pause>
+        <step>true</step>
+        <start_paused>true</start_paused>
+      </plugin>
+
+      <plugin filename="WorldStats" name="World stats">
+        <gz-gui>
+          <title>World stats</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">110</property>
+          <property type="double" key="width">290</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="right" target="right"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <sim_time>true</sim_time>
+        <real_time>true</real_time>
+        <real_time_factor>true</real_time_factor>
+        <iterations>true</iterations>
+      </plugin>
+    </gui>
+
+  </world>
+</sdf>

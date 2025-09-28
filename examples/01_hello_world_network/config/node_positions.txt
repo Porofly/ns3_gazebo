@@ -1,0 +1,17 @@
+# Node Position Configuration for Hello World Network Example
+#
+# Format: node_id x y z
+# Units: meters
+#
+# This file defines the positions of WiFi nodes in the Gazebo world.
+# The positions correspond to the models defined in hello_world.world
+
+# Node 0 (Sender) - Green sphere at origin
+0 0.0 0.0 0.5
+
+# Node 1 (Receiver) - Blue sphere 5 meters away
+1 5.0 0.0 0.5
+
+# Distance between nodes: 5.0 meters
+# This distance is optimal for 802.11g WiFi communication
+# with minimal packet loss while being visible in Gazebo

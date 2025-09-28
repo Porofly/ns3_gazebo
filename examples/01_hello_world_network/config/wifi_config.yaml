@@ -1,0 +1,101 @@
+# WiFi Configuration for Hello World Network Example
+
+wifi:
+  # WiFi standard (802.11g for compatibility)
+  standard: "802.11g"
+
+  # Data rate configuration
+  data_rate: "54Mbps"
+
+  # Transmission power in dBm
+  tx_power: 20.0
+
+  # Operating frequency in GHz
+  frequency: 2.4
+
+  # Channel width in MHz
+  channel_width: 20
+
+  # Channel number
+  channel: 6
+
+  # SSID for the network
+  ssid: "hello-world-network"
+
+# Physical layer parameters
+phy:
+  # Propagation loss model
+  propagation_loss: "LogDistancePropagationLossModel"
+
+  # Propagation delay model
+  propagation_delay: "ConstantSpeedPropagationDelayModel"
+
+  # Noise figure in dB
+  noise_figure: 7.0
+
+  # Energy detection threshold in dBm
+  energy_threshold: -96.0
+
+  # CCA threshold in dBm
+  cca_threshold: -99.0
+
+# MAC layer parameters
+mac:
+  # Queue size
+  queue_size: 100
+
+  # RTS/CTS threshold
+  rts_threshold: 2200
+
+  # Fragmentation threshold
+  fragmentation_threshold: 2346
+
+# Application parameters
+application:
+  # Server port
+  port: 9
+
+  # Packet size in bytes
+  packet_size: 1024
+
+  # Packet interval in seconds
+  interval: 1.0
+
+  # Maximum number of packets
+  max_packets: 10
+
+  # Application start time
+  start_time: 2.0
+
+  # Application stop time
+  stop_time: 10.0
+
+# Logging configuration
+logging:
+  # Enable component logging
+  components:
+    - "UdpEchoClientApplication"
+    - "UdpEchoServerApplication"
+
+  # Log level (ERROR, WARN, INFO, DEBUG)
+  level: "INFO"
+
+  # Enable packet capture
+  pcap: true
+
+  # Enable ASCII trace
+  ascii: true
+
+# Visualization settings
+visualization:
+  # Show WiFi signal range
+  show_range: true
+
+  # Range visualization radius
+  range_radius: 10.0
+
+  # Show packet flow
+  show_packets: true
+
+  # Animation speed
+  animation_speed: 1.0
