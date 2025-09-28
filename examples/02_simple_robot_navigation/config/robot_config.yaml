@@ -1,0 +1,136 @@
+# Robot Configuration for Simple Robot Navigation Example
+
+robot:
+  # Physical parameters
+  wheel_radius: 0.1        # meters
+  wheel_separation: 0.3    # meters
+  max_linear_velocity: 1.0 # m/s
+  max_angular_velocity: 2.0 # rad/s
+
+  # Safety parameters
+  safety_distance: 0.5     # meters - minimum distance to obstacles
+  goal_tolerance: 0.2      # meters - tolerance for reaching goals
+
+  # Control parameters
+  linear_acceleration: 0.5 # m/s²
+  angular_acceleration: 1.0 # rad/s²
+
+  # Sensor configuration
+  lidar:
+    range_min: 0.1         # meters
+    range_max: 10.0        # meters
+    angle_min: -3.14159    # radians
+    angle_max: 3.14159     # radians
+    angle_increment: 0.01745 # radians (~1 degree)
+    scan_time: 0.1         # seconds
+    range_std_dev: 0.01    # meters - noise standard deviation
+
+  # WiFi interface configuration
+  wifi:
+    interface: "wlan0"
+    ssid: "robot_network"
+    channel: 6
+    tx_power: 20           # dBm
+    frequency: 2.437       # GHz (channel 6)
+
+  # Battery simulation
+  battery:
+    capacity: 5000         # mAh
+    voltage: 12.0          # V
+    discharge_rate: 0.1    # %/minute during navigation
+    idle_rate: 0.02        # %/minute when idle
+
+# Network configuration
+network:
+  update_rate: 2.0         # Hz - rate of network status updates
+  monitoring_rate: 1.0     # Hz - rate of network monitoring
+  enable_network: true     # Enable/disable network simulation
+
+  # Packet configuration
+  status_packet_size: 1024 # bytes
+  sensor_packet_size: 2048 # bytes
+  control_packet_size: 512 # bytes
+
+  # Network performance thresholds
+  thresholds:
+    latency_warn: 50       # ms
+    latency_error: 100     # ms
+    packet_loss_warn: 2    # %
+    packet_loss_error: 5   # %
+    signal_warn: -65       # dBm
+    signal_error: -80      # dBm
+
+# Goal sender configuration
+goal_sender:
+  auto_mode: true          # Automatically send goal sequence
+  goal_timeout: 30.0       # seconds - timeout for reaching goals
+  goal_tolerance: 0.5      # meters - distance tolerance for goals
+  sequence_delay: 5.0      # seconds - delay between goals
+  max_goals: 5             # maximum goals in sequence
+
+  # Predefined goal sequence (can be overridden)
+  default_goals:
+    - name: "Point A"
+      x: 2.0
+      y: 1.0
+      theta: 0.0
+    - name: "Point B"
+      x: 4.0
+      y: 3.0
+      theta: 1.57
+    - name: "Point C"
+      x: 1.0
+      y: 4.0
+      theta: 3.14
+    - name: "Point D"
+      x: -1.0
+      y: 2.0
+      theta: -1.57
+    - name: "Home"
+      x: 0.0
+      y: 0.0
+      theta: 0.0
+
+# Logging configuration
+logging:
+  level: "INFO"            # Log level: DEBUG, INFO, WARN, ERROR
+  log_network: true        # Log network performance data
+  log_navigation: true     # Log navigation status
+  log_sensors: false       # Log sensor data (can be verbose)
+
+  # File logging
+  enable_file_logging: true
+  log_directory: "logs"
+  log_rotation_size: 10    # MB
+  max_log_files: 5
+
+# Visualization settings
+visualization:
+  show_lidar: true         # Show lidar visualization
+  show_path: true          # Show planned path
+  show_footprint: true     # Show robot footprint
+  show_goal_markers: true  # Show goal position markers
+  show_network_status: true # Show network status overlay
+
+  # Colors (RGBA)
+  colors:
+    robot: [0.0, 0.0, 1.0, 1.0]      # Blue
+    path: [0.0, 1.0, 0.0, 0.8]       # Green
+    goal: [1.0, 1.0, 0.0, 0.8]       # Yellow
+    obstacle: [1.0, 0.0, 0.0, 0.8]   # Red
+
+# Performance tuning
+performance:
+  update_rates:
+    odometry: 30           # Hz
+    lidar: 10              # Hz
+    status: 2              # Hz
+    network: 1             # Hz
+
+  # Simulation parameters
+  physics_step: 0.001      # seconds
+  real_time_factor: 1.0    # simulation speed multiplier
+
+  # Memory limits
+  history_buffer_size: 1000 # number of historical data points
+  log_buffer_size: 10000    # number of log entries to buffer

@@ -1,0 +1,225 @@
+# WiFi Configuration for Robot Navigation Example
+
+wifi:
+  # WiFi standard (802.11n for better performance)
+  standard: "802.11n"
+
+  # Data rate configuration
+  data_rate: "150Mbps"
+
+  # Transmission power in dBm
+  tx_power: 20.0
+
+  # Operating frequency in GHz
+  frequency: 2.437
+
+  # Channel configuration
+  channel: 6
+  channel_width: 40
+
+  # Network identification
+  ssid: "robot_network"
+  security: "WPA2"
+
+  # Access Point configuration
+  access_point:
+    ip_address: "10.1.1.1"
+    netmask: "255.255.255.0"
+    dhcp_range_start: "10.1.1.100"
+    dhcp_range_end: "10.1.1.200"
+
+# Physical layer parameters
+phy:
+  # Propagation model
+  propagation_loss: "LogDistancePropagationLossModel"
+  propagation_delay: "ConstantSpeedPropagationDelayModel"
+
+  # Propagation parameters
+  reference_distance: 1.0    # meters
+  reference_loss: 40.0       # dB at reference distance
+  path_loss_exponent: 3.0    # path loss exponent
+
+  # Noise parameters
+  noise_figure: 7.0          # dB
+  thermal_noise: -174.0      # dBm/Hz
+  energy_threshold: -96.0    # dBm
+  cca_threshold: -99.0       # dBm
+
+  # Antenna parameters
+  antenna_gain: 0.0          # dBi
+  antenna_height: 1.5        # meters
+  polarization: "vertical"
+
+# MAC layer parameters
+mac:
+  # Queue configuration
+  queue_size: 100
+  queue_mode: "QUEUE_MODE_PACKETS"
+
+  # RTS/CTS configuration
+  rts_threshold: 2200        # bytes
+  fragmentation_threshold: 2346  # bytes
+
+  # EDCA parameters (for QoS)
+  ac_be_txop: 0              # microseconds
+  ac_bk_txop: 0
+  ac_vi_txop: 3008
+  ac_vo_txop: 1504
+
+  # Retry limits
+  short_retry_limit: 7
+  long_retry_limit: 4
+
+# Application layer parameters
+application:
+  # Traffic patterns
+  traffic_patterns:
+    status_updates:
+      type: "periodic"
+      interval: 0.5            # seconds
+      packet_size: 1024        # bytes
+      priority: "BE"           # Best Effort
+
+    sensor_data:
+      type: "periodic"
+      interval: 0.1            # seconds
+      packet_size: 2048        # bytes
+      priority: "VI"           # Video (high priority)
+
+    control_commands:
+      type: "on_demand"
+      packet_size: 512         # bytes
+      priority: "VO"           # Voice (highest priority)
+
+    navigation_data:
+      type: "periodic"
+      interval: 0.2            # seconds
+      packet_size: 4096        # bytes
+      priority: "VI"
+
+  # QoS configuration
+  qos:
+    enable_qos: true
+    dscp_marking: true
+    traffic_shaping: false
+
+# Network performance monitoring
+monitoring:
+  # Metrics to collect
+  metrics:
+    - "latency"
+    - "throughput"
+    - "packet_loss"
+    - "signal_strength"
+    - "interference"
+    - "channel_utilization"
+
+  # Measurement intervals
+  measurement_interval: 1.0   # seconds
+  reporting_interval: 5.0     # seconds
+
+  # Performance thresholds
+  thresholds:
+    latency:
+      good: 10.0              # ms
+      acceptable: 50.0        # ms
+      poor: 100.0             # ms
+
+    throughput:
+      minimum: 1.0            # Mbps
+      target: 10.0            # Mbps
+      maximum: 150.0          # Mbps
+
+    packet_loss:
+      acceptable: 1.0         # %
+      poor: 5.0               # %
+      critical: 10.0          # %
+
+    signal_strength:
+      excellent: -40.0        # dBm
+      good: -55.0             # dBm
+      acceptable: -70.0       # dBm
+      poor: -85.0             # dBm
+
+# Mobility model for network simulation
+mobility:
+  # Robot mobility
+  robot_mobility:
+    model: "ns3::ConstantVelocityMobilityModel"
+    initial_position: [0.0, 0.0, 0.5]
+    initial_velocity: [0.0, 0.0, 0.0]
+
+  # Access Point mobility (static)
+  ap_mobility:
+    model: "ns3::ConstantPositionMobilityModel"
+    position: [0.0, 0.0, 3.0]
+
+# Channel model parameters
+channel:
+  # Frequency-selective fading
+  fading:
+    model: "nakagami"
+    m_parameter: 1.0
+    variance: 1.0
+
+  # Shadowing
+  shadowing:
+    standard_deviation: 8.0   # dB
+    correlation_distance: 50.0 # meters
+
+  # Fast fading
+  fast_fading:
+    enable: true
+    doppler_frequency: 5.0    # Hz
+
+# Interference modeling
+interference:
+  # Background noise
+  background_noise: -95.0     # dBm
+
+  # Interfering devices
+  interferers:
+    - type: "wifi"
+      channel: 1
+      power: 15.0             # dBm
+      duty_cycle: 0.3
+    - type: "bluetooth"
+      frequency: 2.45         # GHz
+      power: 0.0              # dBm
+      duty_cycle: 0.1
+
+# Logging and debugging
+logging:
+  # Enable component logging
+  components:
+    - "WifiNetDevice"
+    - "YansWifiPhy"
+    - "DcaTxop"
+    - "EdcaTxopN"
+
+  # Log levels
+  level: "INFO"
+
+  # Packet tracing
+  pcap_tracing: true
+  ascii_tracing: true
+
+  # Performance logging
+  log_performance_metrics: true
+  performance_log_interval: 1.0
+
+# Simulation parameters
+simulation:
+  # Duration
+  duration: 300.0             # seconds
+
+  # Random seed
+  random_seed: 12345
+
+  # Real-time simulation
+  real_time_mode: true
+  real_time_factor: 1.0
+
+  # Animation
+  enable_animation: true
+  animation_file: "robot_nav_animation.xml"
