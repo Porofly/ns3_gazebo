@@ -62,6 +62,8 @@ int get_options(int argc, char *argv[]) {
         exit(1);
     }
   }
+
+  return 0;
 }
 
 // set fixt position for two nodes
