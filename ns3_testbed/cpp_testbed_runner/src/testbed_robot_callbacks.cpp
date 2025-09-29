@@ -28,7 +28,7 @@ publisher_callback_t::publisher_callback_t(testbed_robot_t* _r_ptr,
                        const std::string _subscription_name,
                        const unsigned int _size,
                        const std::chrono::microseconds _microseconds,
-                       const rmw_qos_profile_t _qos_profile,
+                       const rclcpp::QoS _qos_profile,
                        const bool _verbose) :
            r_ptr(_r_ptr),
            subscription_name(_subscription_name),
@@ -50,14 +50,13 @@ publisher_callback_t::publisher_callback_t(testbed_robot_t* _r_ptr,
 // http://www.theconstructsim.com/wp-content/uploads/2019/03/ROS2-IN-5-DAYS-e-book.pdf
 void publisher_callback_t::publish_message() {
 
-  std::shared_ptr<cpp_testbed_runner::msg::TestbedMessage> msg(
-                std::make_shared<cpp_testbed_runner::msg::TestbedMessage>());
+  cpp_testbed_runner::msg::TestbedMessage msg;
 
-  msg->nanoseconds = _now();
-  msg->source = r_ptr->r;
-  msg->message_name = subscription_name;
-  msg->message_number = ++count;
-  msg->message = std::string(size, subscription_name[0]);
+  msg.nanoseconds = _now();
+  msg.source = r_ptr->r;
+  msg.message_name = subscription_name;
+  msg.message_number = ++count;
+  msg.message = std::string(size, subscription_name[0]);
 
   if (verbose) {
     RCLCPP_INFO(node_logger, "Publishing: %s count %d size %d",
@@ -70,7 +69,7 @@ void publisher_callback_t::publish_message() {
 // subscriber_callback
 subscriber_callback_t::subscriber_callback_t(testbed_robot_t* _r_ptr,
                       const std::string _subscription_name,
-                      const rmw_qos_profile_t _qos_profile,
+                      const rclcpp::QoS _qos_profile,
                       const bool _use_pipe,
                       const bool _verbose) :
          r_ptr(_r_ptr),
@@ -91,11 +90,11 @@ subscriber_callback_t::subscriber_callback_t(testbed_robot_t* _r_ptr,
           };
   subscription = _r_ptr->create_subscription<
                       cpp_testbed_runner::msg::TestbedMessage>(
-                      subscription_name, callback);
+                      subscription_name, qos_profile, callback);
 }
 
 void subscriber_callback_t::subscriber_callback(
-              const cpp_testbed_runner::msg::TestbedMessage::SharedPtr msg) {
+              const cpp_testbed_runner::msg::TestbedMessage::ConstSharedPtr msg) {
 
   // Source robot, subscription name, index number, size, latency dt
   std::stringstream ss;

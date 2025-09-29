@@ -74,32 +74,33 @@ void _validate_header(std::string line, std::string mode) {
   }
 }
 
-rmw_qos_profile_t _qos_profile(std::string history, std::string depth,
+rclcpp::QoS _qos_profile(std::string history, std::string depth,
                              std::string reliability, std::string durability) {
 
-  rmw_qos_profile_t profile = rmw_qos_profile_default;
+  // Create QoS profile with depth
+  int depth_value = stoi(depth);
+  rclcpp::QoS profile(depth_value);
+
   if(history == "keep_last") {
-    profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
+    profile.history(rclcpp::HistoryPolicy::KeepLast);
   } else if (history == "keep_all") {
-    profile.history = RMW_QOS_POLICY_HISTORY_KEEP_ALL;
+    profile.history(rclcpp::HistoryPolicy::KeepAll);
   } else {
     assert(0);
   }
 
-  depth = stoi(depth);
-
   if(reliability == "reliable") {
-    profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+    profile.reliability(rclcpp::ReliabilityPolicy::Reliable);
   } else if (reliability == "best_effort") {
-    profile.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
+    profile.reliability(rclcpp::ReliabilityPolicy::BestEffort);
   } else {
     assert(0);
   }
 
   if(durability == "transient_local") {
-    profile.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+    profile.durability(rclcpp::DurabilityPolicy::TransientLocal);
   } else if (durability == "volatile") {
-    profile.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+    profile.durability(rclcpp::DurabilityPolicy::Volatile);
   } else {
     assert(0);
   }

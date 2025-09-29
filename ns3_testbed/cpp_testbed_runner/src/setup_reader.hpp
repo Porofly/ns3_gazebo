@@ -9,6 +9,7 @@
 #include <chrono>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/qos.hpp"
 
 class publish_record_t {
   public:
@@ -21,7 +22,7 @@ class publish_record_t {
   const unsigned int depth;      // used if using keep_last
   const std::string reliability; // reliable|best_effort
   const std::string durability;  // transient_local|volatile
-  const rmw_qos_profile_t qos_profile;
+  const rclcpp::QoS qos_profile;
 
   publish_record_t(const std::vector<std::string>& row);
 };
@@ -36,7 +37,7 @@ public:
   const unsigned int depth;      // used if using keep_last
   const std::string reliability; // reliable|best_effort
   const std::string durability;  // transient_local|volatile
-  const rmw_qos_profile_t qos_profile;
+  const rclcpp::QoS qos_profile;
 
   subscribe_record_t(const std::vector<std::string>& row);
 };

@@ -52,7 +52,7 @@ class TestbedRobot(Node):
         # start publishers
         self.counters = defaultdict(int)
         self.publisher_managers = dict()
-        self.timers = list()
+        self.custom_timers = list()  # Renamed to avoid conflict with ROS2 Jazzy Node.timers property
         for publisher in publishers:
             # only publish to subscriptions intended for this robot
             if publisher.node != robot_name:
@@ -74,7 +74,7 @@ class TestbedRobot(Node):
                                            publisher.subscription, publisher.size)
             period = 1/publisher.frequency
             timer = self.create_timer(period, publisher_timer_callback_function)
-            self.timers.append(timer)
+            self.custom_timers.append(timer)
 
         # start subscribers
         subscriptions = list()
