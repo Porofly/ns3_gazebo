@@ -29,17 +29,36 @@ DiffDriveRobot::DiffDriveRobot(rclcpp::Node::SharedPtr & _rclcpp_node,
 void
 DiffDriveRobot::onOdomReceived(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
-  // Move ns-3's node 0 antenna location
-  ns3::Ptr<ns3::Node> node = ns3_nodes->Get(0);
-  ns3::Ptr<ns3::ConstantPositionMobilityModel> mobility_model =
-                        node->GetObject<ns3::ConstantPositionMobilityModel>();
-  auto vector = mobility_model->GetPosition();
-  vector.x = msg->pose.pose.position.x;
-  mobility_model->SetPosition(vector);
-  std::stringstream ss;
-  ss << "Set Node 0 antenna x: " << vector.x;
-//  std::cout << ss.str() << std::endl;
-  RCLCPP_INFO(rclcpp_node->get_logger(), ss.str().c_str());
+  try {
+    // Safety check for NS-3 nodes
+    if (!ns3_nodes || ns3_nodes->GetN() == 0) {
+      RCLCPP_WARN(rclcpp_node->get_logger(), "NS-3 nodes not available");
+      return;
+    }
+
+    // Move ns-3's node 0 antenna location
+    ns3::Ptr<ns3::Node> node = ns3_nodes->Get(0);
+    if (!node) {
+      RCLCPP_WARN(rclcpp_node->get_logger(), "NS-3 node 0 not available");
+      return;
+    }
+
+    ns3::Ptr<ns3::ConstantPositionMobilityModel> mobility_model =
+                          node->GetObject<ns3::ConstantPositionMobilityModel>();
+    if (!mobility_model) {
+      RCLCPP_WARN(rclcpp_node->get_logger(), "Mobility model not available");
+      return;
+    }
+
+    auto vector = mobility_model->GetPosition();
+    vector.x = msg->pose.pose.position.x;
+    mobility_model->SetPosition(vector);
+    std::stringstream ss;
+    ss << "Set Node 0 antenna x: " << vector.x;
+    RCLCPP_INFO(rclcpp_node->get_logger(), ss.str().c_str());
+  } catch (const std::exception& e) {
+    RCLCPP_ERROR(rclcpp_node->get_logger(), "Error in onOdomReceived: %s", e.what());
+  }
 }
 
 std::string
