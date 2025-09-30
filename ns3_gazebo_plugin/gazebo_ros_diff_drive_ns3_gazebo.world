@@ -31,6 +31,9 @@
     <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster">
     </plugin>
 
+    <!-- ROS2 bridge must be run as separate node, not as Gazebo plugin
+         See instructions below for running ros_gz_bridge -->
+
     <!-- Basic ground plane -->
     <model name='ground_plane'>
       <static>true</static>
@@ -278,6 +281,10 @@
         <wheel_separation>1.25</wheel_separation>
         <wheel_radius>0.3</wheel_radius>
         <odom_publish_frequency>1</odom_publish_frequency>
+        <topic>cmd_vel</topic>
+        <odom_topic>odometry</odom_topic>
+        <frame_id>odom</frame_id>
+        <child_frame_id>chassis</child_frame_id>
         <max_linear_acceleration>1</max_linear_acceleration>
         <min_linear_acceleration>-1</min_linear_acceleration>
         <max_angular_acceleration>2</max_angular_acceleration>

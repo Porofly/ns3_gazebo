@@ -53,37 +53,32 @@ void set_up_ns3(ns3::NodeContainer& ns3_nodes) {
   ns3::NetDeviceContainer devices = wifi.Install(wifiPhy, wifiMac, ns3_nodes);
 
   // antenna locations
+  // Node 0 (nns1): starts at (0,0,0), will be updated by Gazebo odometry
+  // Other nodes (nns2-5): fixed positions at 5m intervals for WiFi range testing
   ns3::Ptr<ns3::ListPositionAllocator>positionAlloc =
                          ns3::CreateObject<ns3::ListPositionAllocator>();
   for (int i=0; i<COUNT; i++) {
-    positionAlloc->Add(ns3::Vector(0.0, 0.0, 0.0));
+    positionAlloc->Add(ns3::Vector(i * 5.0, 0.0, 0.0));  // Node 0:(0,0,0), Node 1:(5,0,0), ...
   }
   ns3::MobilityHelper mobility;
   mobility.SetPositionAllocator(positionAlloc);
   mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
   mobility.Install(ns3_nodes);
 
-  // connect Wifi through TapBridge devices - Enhanced error handling for NS-3 3.45
+  // connect Wifi through TapBridge devices - UseLocal mode for WiFi devices
   ns3::TapBridgeHelper tapBridge;
   tapBridge.SetAttribute("Mode", ns3::StringValue("UseLocal"));
-  char buffer[10];
+  char buffer[16];
 
-  try {
-    for (int i=0; i<COUNT; i++) {
-      sprintf(buffer, "wifi_tap%d", i+1);
-      tapBridge.SetAttribute("DeviceName", ns3::StringValue(buffer));
-
-      // Add IP configuration for UseLocal mode
-      char ip_buffer[20];
-      sprintf(ip_buffer, "10.0.%d.1", i+1);
-      tapBridge.SetAttribute("IpAddress", ns3::StringValue(ip_buffer));
-      tapBridge.SetAttribute("Netmask", ns3::StringValue("255.255.255.0"));
-
+  for (int i=0; i<COUNT; i++) {
+    sprintf(buffer, "wifi_tap%d", i+1);
+    tapBridge.SetAttribute("DeviceName", ns3::StringValue(buffer));
+    try {
       tapBridge.Install(ns3_nodes.Get(i), devices.Get(i));
+      std::cout << "TapBridge installed for " << buffer << " on WiFi device" << std::endl;
+    } catch (const std::exception& e) {
+      std::cerr << "TapBridge install failed for " << buffer << ": " << e.what() << std::endl;
     }
-  } catch (const std::exception& e) {
-    std::cerr << "Error setting up TAP bridges: " << e.what() << std::endl;
-    // Continue without TAP bridges for testing
   }
 }
 

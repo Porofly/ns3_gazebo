@@ -76,18 +76,21 @@ void ns3_setup(ns3::NodeContainer& ns3_nodes) {
   mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
   mobility.Install(ns3_nodes);
 
-  // connect Wifi through TapBridge devices (disabled for testing)
-  // NOTE: TAP bridge disabled to avoid device conflicts during integration testing
-  /*
+  // connect Wifi through TapBridge devices
+  // TAP bridge enables real network connectivity between NS-3 and network namespaces
   ns3::TapBridgeHelper tapBridge;
   tapBridge.SetAttribute("Mode", ns3::StringValue("UseLocal"));
-  char buffer[10];
+  char buffer[16];
   for (int i=0; i<COUNT; i++) {
     sprintf(buffer, "wifi_tap%d", i+1);
     tapBridge.SetAttribute("DeviceName", ns3::StringValue(buffer));
-    tapBridge.Install(ns3_nodes.Get(i), devices.Get(i));
+    try {
+      tapBridge.Install(ns3_nodes.Get(i), devices.Get(i));
+      std::cout << "TapBridge installed for " << buffer << " on WiFi device " << i << "\n";
+    } catch (const std::exception& e) {
+      std::cerr << "TapBridge install failed for " << buffer << ": " << e.what() << "\n";
+    }
   }
-  */
 }
 
 static void ns3_thread_function(void) {
