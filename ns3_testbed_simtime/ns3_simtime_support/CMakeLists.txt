@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 set(CMAKE_BUILD_TYPE Debug)
 
-include_directories(src ~/repos/ns-3-allinone/ns-3.29/build)
-link_directories(~/repos/ns-3-allinone/ns-3.29/build/lib)
+include_directories(src ${CMAKE_CURRENT_SOURCE_DIR}/../../ns-allinone-3.45/ns-3.45/build/include)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../ns-allinone-3.45/ns-3.45/build/lib)
 list(APPEND CMAKE_CXX_FLAGS)
 
 # simtime support

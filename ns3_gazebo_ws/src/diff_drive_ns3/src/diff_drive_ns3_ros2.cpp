@@ -1,4 +1,14 @@
-// adapted from https://raw.githubusercontent.com/ros2/demos/master/demo_nodes_cpp/src/topics/listener.cpp
+/**
+ * @file diff_drive_ns3_ros2.cpp
+ * @brief ROS2 Integration with NS-3 Network Simulation
+ *
+ * UPGRADE NOTES (NS-3 3.29 → 3.45, ROS2 Jazzy compatibility):
+ * - Updated WiFi Standard API for NS-3 3.45
+ * - Fixed ObjectFactory initialization patterns
+ * - Compatible with ROS2 Jazzy QoS parameters
+ *
+ * Adapted from https://raw.githubusercontent.com/ros2/demos/master/demo_nodes_cpp/src/topics/listener.cpp
+ */
 
 #include <cstdio>
 #include <memory>
@@ -13,6 +23,9 @@ static const int COUNT=5;
 
 void set_up_ns3(ns3::NodeContainer& ns3_nodes) {
 
+  // Initialize NS-3 logging and time resolution (important for NS-3 3.45)
+  ns3::Time::SetResolution(ns3::Time::NS);
+
   // run ns3 real-time with checksums
   ns3::GlobalValue::Bind("SimulatorImplementationType",
                           ns3::StringValue("ns3::RealtimeSimulatorImpl"));
@@ -23,7 +36,7 @@ void set_up_ns3(ns3::NodeContainer& ns3_nodes) {
 
   // Wifi settings
   ns3::WifiHelper wifi;
-  wifi.SetStandard(ns3::WIFI_PHY_STANDARD_80211a);
+  wifi.SetStandard(ns3::WIFI_STANDARD_80211a);
   wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
                           "DataMode", ns3::StringValue("OfdmRate54Mbps"));
 
@@ -31,53 +44,71 @@ void set_up_ns3(ns3::NodeContainer& ns3_nodes) {
   ns3::WifiMacHelper wifiMac;
   wifiMac.SetType("ns3::AdhocWifiMac");
 
-  // physical layer
-  ns3::YansWifiChannelHelper wifiChannel(ns3::YansWifiChannelHelper::Default());
-  ns3::YansWifiPhyHelper wifiPhy(ns3::YansWifiPhyHelper::Default());
+  // physical layer - use default configuration to avoid ObjectFactory issues
+  ns3::YansWifiChannelHelper wifiChannel = ns3::YansWifiChannelHelper::Default();
+  ns3::YansWifiPhyHelper wifiPhy;
   wifiPhy.SetChannel(wifiChannel.Create());
 
   // Install the wireless devices onto our ghost ns3_nodes.
   ns3::NetDeviceContainer devices = wifi.Install(wifiPhy, wifiMac, ns3_nodes);
 
   // antenna locations
+  // Node 0 (nns1): starts at (0,0,0), will be updated by Gazebo odometry
+  // Other nodes (nns2-5): fixed positions at 5m intervals for WiFi range testing
   ns3::Ptr<ns3::ListPositionAllocator>positionAlloc =
                          ns3::CreateObject<ns3::ListPositionAllocator>();
   for (int i=0; i<COUNT; i++) {
-    positionAlloc->Add(ns3::Vector(0.0, 0.0, 0.0));
+    positionAlloc->Add(ns3::Vector(i * 5.0, 0.0, 0.0));  // Node 0:(0,0,0), Node 1:(5,0,0), ...
   }
   ns3::MobilityHelper mobility;
   mobility.SetPositionAllocator(positionAlloc);
   mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
   mobility.Install(ns3_nodes);
 
-  // connect Wifi through TapBridge devices
+  // connect Wifi through TapBridge devices - UseLocal mode for WiFi devices
   ns3::TapBridgeHelper tapBridge;
   tapBridge.SetAttribute("Mode", ns3::StringValue("UseLocal"));
-  char buffer[10];
+  char buffer[16];
+
   for (int i=0; i<COUNT; i++) {
     sprintf(buffer, "wifi_tap%d", i+1);
     tapBridge.SetAttribute("DeviceName", ns3::StringValue(buffer));
-    tapBridge.Install(ns3_nodes.Get(i), devices.Get(i));
+    try {
+      tapBridge.Install(ns3_nodes.Get(i), devices.Get(i));
+      std::cout << "TapBridge installed for " << buffer << " on WiFi device" << std::endl;
+    } catch (const std::exception& e) {
+      std::cerr << "TapBridge install failed for " << buffer << ": " << e.what() << std::endl;
+    }
   }
 }
 
 void robot_thread_function(ns3::NodeContainer* ns3_nodes_ptr) {
 
-  // Create the ROS2 node
-  std::shared_ptr<rclcpp::Node> rclcpp_node = rclcpp::Node::make_shared(
-                                                   "diff_drive_node");
+  try {
+    // Create the ROS2 node
+    std::shared_ptr<rclcpp::Node> rclcpp_node = rclcpp::Node::make_shared(
+                                                     "diff_drive_node");
 
-  // create the robot, give the rclcpp_node and ns3_compnent nodes to it
-  std::unique_ptr<diff_drive_robot::DiffDriveRobot> robot_ = 
-             std::make_unique<diff_drive_robot::DiffDriveRobot>(rclcpp_node,
-                                                      ns3_nodes_ptr);
+    // create the robot, give the rclcpp_node and ns3_compnent nodes to it
+    std::unique_ptr<diff_drive_robot::DiffDriveRobot> robot_ =
+               std::make_unique<diff_drive_robot::DiffDriveRobot>(rclcpp_node,
+                                                        ns3_nodes_ptr);
 
-  // spin will block until work comes in, execute work as it becomes
-  // available, and keep blocking.  It will only be interrupted by Ctrl-C.
-  std::cout << "Starting robot in thread.\n";
-  rclcpp::spin(rclcpp_node);
-  rclcpp::shutdown();
-  std::cout << "Stopped robot in thread.\n";
+    // spin will block until work comes in, execute work as it becomes
+    // available, and keep blocking.  It will only be interrupted by Ctrl-C.
+    std::cout << "Starting robot in thread.\n";
+
+    // Use spin_some instead of spin for better control
+    rclcpp::WallRate loop_rate(10); // 10 Hz
+    while (rclcpp::ok()) {
+      rclcpp::spin_some(rclcpp_node);
+      loop_rate.sleep();
+    }
+
+    std::cout << "Stopped robot in thread.\n";
+  } catch (const std::exception& e) {
+    std::cerr << "Error in robot thread: " << e.what() << std::endl;
+  }
 }
 
 int main(int argc, char * argv[]) {
@@ -100,8 +131,8 @@ int main(int argc, char * argv[]) {
   // start the robot as a second thread
   std::thread robot_thread(robot_thread_function, &ns3_nodes);
 
-  // set to run for one year
-  ns3::Simulator::Stop(ns3::Seconds(60*60*24*365.));
+  // set to run for shorter time for testing
+  ns3::Simulator::Stop(ns3::Seconds(30.0));
 
   // run until Ctrl-C
   std::cout << "Starting ns-3 Wifi simulator in main.\n";

@@ -28,7 +28,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
 add_library(testbed_robot src/testbed_robot.cpp)
 ament_target_dependencies(testbed_robot
-    "testbed_message"
     "example_interfaces"
     "rclcpp"
     "rcutils"
@@ -41,15 +40,13 @@ ament_target_dependencies(testbed_robot_callbacks
     "example_interfaces"
     "rclcpp"
     "rcutils"
-    "std_msgs"
-    "testbed_message")
+    "std_msgs")
 
 rosidl_target_interfaces(testbed_robot_callbacks
                          ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 add_library(setup_reader src/setup_reader.cpp)
 ament_target_dependencies(setup_reader
-    "testbed_message"
     "example_interfaces"
     "rclcpp"
     "rcutils"
@@ -67,9 +64,25 @@ ament_target_dependencies(testbed_runner
   "rcutils"
   "std_msgs")
 
+# Set RPATH for proper library linking
+set_target_properties(testbed_runner PROPERTIES
+  INSTALL_RPATH "$ORIGIN"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+
 target_link_libraries(testbed_runner testbed_robot testbed_robot_callbacks
                                      setup_reader pipe_writer set_nns)
 
+# Install libraries
+install(TARGETS
+  testbed_robot
+  testbed_robot_callbacks
+  setup_reader
+  pipe_writer
+  set_nns
+  DESTINATION lib/${PROJECT_NAME})
+
+# Install executable
 install(TARGETS testbed_runner DESTINATION lib/${PROJECT_NAME})
 
 file(COPY ../csv_setup/example1.csv DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -16,7 +16,7 @@ class publisher_callback_t {
   const std::string subscription_name;
   const unsigned int size;
   const std::chrono::microseconds microseconds;
-  const rmw_qos_profile_t qos_profile;
+  const rclcpp::QoS qos_profile;
   const bool verbose;
 
   int count;
@@ -30,7 +30,7 @@ class publisher_callback_t {
                        const std::string _subscription_name,
                        const unsigned int _size,
                        const std::chrono::microseconds _microseconds,
-                       const rmw_qos_profile_t _qos_profile,
+                       const rclcpp::QoS _qos_profile,
                        const bool _verbose);
   void publish_message();
 };
@@ -41,7 +41,7 @@ class subscriber_callback_t {
   const std::string subscription_name;
   rclcpp::Subscription<cpp_testbed_runner::msg::TestbedMessage>::SharedPtr
                                                                subscription;
-  const rmw_qos_profile_t qos_profile;
+  const rclcpp::QoS qos_profile;
   const bool use_pipe;
   const bool verbose;
   rclcpp::Logger node_logger;
@@ -49,11 +49,11 @@ class subscriber_callback_t {
   public:
   subscriber_callback_t(testbed_robot_t* _r_ptr,
                         const std::string _subscription_name,
-                        const rmw_qos_profile_t _qos_profile,
+                        const rclcpp::QoS _qos_profile,
                         const bool _use_pipe,
                         const bool _verbose);
 
-  void subscriber_callback(cpp_testbed_runner::msg::TestbedMessage::SharedPtr
+  void subscriber_callback(cpp_testbed_runner::msg::TestbedMessage::ConstSharedPtr
                                                                msg);
 };
 

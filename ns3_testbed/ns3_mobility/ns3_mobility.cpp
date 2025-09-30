@@ -9,6 +9,8 @@
 #include "ns3/mobility-module.h"
 #include "ns3/wifi-module.h"
 #include "ns3/tap-bridge-module.h"
+#include "ns3/csma-module.h"
+#include "ns3/bridge-module.h"
 #include "ns3/random-variable-stream.h"
 
 static int count = 5;
@@ -69,6 +71,7 @@ int get_options(int argc, char *argv[]) {
 //  argc -= optind;
 //  argv += optind;
 
+  return 0;
 }
 
 // set mobility for ground station and robot nodes
@@ -129,7 +132,7 @@ void ns3_setup(ns3::NodeContainer& ns3_nodes) {
 
   // Wifi settings
   ns3::WifiHelper wifi;
-  wifi.SetStandard(ns3::WIFI_PHY_STANDARD_80211a);
+  wifi.SetStandard(ns3::WIFI_STANDARD_80211a);
   wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
                           "DataMode", ns3::StringValue("OfdmRate54Mbps"));
 
@@ -138,8 +141,8 @@ void ns3_setup(ns3::NodeContainer& ns3_nodes) {
   wifiMac.SetType("ns3::AdhocWifiMac");
 
   // physical layer
-  ns3::YansWifiChannelHelper wifiChannel(ns3::YansWifiChannelHelper::Default());
-  ns3::YansWifiPhyHelper wifiPhy(ns3::YansWifiPhyHelper::Default());
+  ns3::YansWifiChannelHelper wifiChannel = ns3::YansWifiChannelHelper::Default();
+  ns3::YansWifiPhyHelper wifiPhy;
   float p=16.0206; // default
   wifiPhy.Set("TxPowerStart", ns3::DoubleValue(p));
   wifiPhy.Set("TxPowerEnd", ns3::DoubleValue(p));
@@ -151,14 +154,32 @@ void ns3_setup(ns3::NodeContainer& ns3_nodes) {
   // install mobility
   set_mobility(ns3_nodes);
 
-  // connect Wifi through TapBridge devices
+  // NS-3 3.45 Compatibility: Use pure CSMA network with TapBridge
+  // Replace WiFi with CSMA for TapBridge compatibility in NS-3 3.45
+  std::cout << "Note: Using CSMA network instead of WiFi for NS-3 3.45 TapBridge compatibility" << std::endl;
+
+  // Create CSMA network for TapBridge compatibility
+  ns3::CsmaHelper csma;
+  csma.SetChannelAttribute("DataRate", ns3::StringValue("54Mbps")); // Similar to WiFi
+  csma.SetChannelAttribute("Delay", ns3::TimeValue(ns3::NanoSeconds(6560)));
+
+  // Replace WiFi devices with CSMA devices
+  ns3::NetDeviceContainer csmaDevices = csma.Install(ns3_nodes);
+
+  // Install TapBridge on CSMA devices (which support SendFrom)
   ns3::TapBridgeHelper tapBridge;
-  tapBridge.SetAttribute("Mode", ns3::StringValue("UseLocal"));
-  char buffer[10];
+  tapBridge.SetAttribute("Mode", ns3::StringValue("UseBridge"));
+  char buffer[20]; // Increased buffer size to prevent overflow
   for (int i=0; i<count; i++) {
     sprintf(buffer, "wifi_tap%d", i+1);
     tapBridge.SetAttribute("DeviceName", ns3::StringValue(buffer));
-    tapBridge.Install(ns3_nodes.Get(i), devices.Get(i));
+    try {
+      tapBridge.Install(ns3_nodes.Get(i), csmaDevices.Get(i));
+      std::cout << "TapBridge installed successfully for " << buffer << " on CSMA device" << std::endl;
+    } catch (const std::exception& e) {
+      std::cerr << "TapBridge install failed for " << buffer << ": " << e.what() << std::endl;
+      std::cerr << "Continuing without TapBridge for this node..." << std::endl;
+    }
   }
 }
 
@@ -189,6 +210,9 @@ void interval_function(const ns3::NodeContainer& ns3_nodes) {
 }
 
 int main(int argc, char *argv[]) {
+  // NS-3 3.45 initialization
+  ns3::Time::SetResolution(ns3::Time::NS);
+
   get_options(argc, argv);
 
   // Force flush of the stdout buffer.

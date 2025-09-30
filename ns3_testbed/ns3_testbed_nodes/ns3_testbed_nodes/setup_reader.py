@@ -37,29 +37,25 @@ def _qos_profile(history, depth, reliability, durability):
 
     # history
     if history.lower() == "keep_all":
-        profile.history = QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_ALL
+        profile.history = QoSHistoryPolicy.KEEP_ALL
     elif history.lower() == "keep_last":
-        profile.history = QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST
+        profile.history = QoSHistoryPolicy.KEEP_LAST
     else:
         raise RuntimeError("Invalid history policy: %s"%history)
 
     # reliability
     if reliability.lower() == "reliable":
-        profile.reliability = \
-                   QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_RELIABLE
+        profile.reliability = QoSReliabilityPolicy.RELIABLE
     elif reliability.lower() == "best_effort":
-        profile.reliability = \
-                   QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT
+        profile.reliability = QoSReliabilityPolicy.BEST_EFFORT
     else:
         raise RuntimeError("Invalid reliability policy: %s"%reliability)
 
     # durability
     if durability.lower() == "transient_local":
-        profile.durability = \
-                   QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+        profile.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
     elif durability.lower() == "volatile":
-        profile.durability = \
-                   QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_VOLATILE
+        profile.durability = QoSDurabilityPolicy.VOLATILE
     else:
         raise RuntimeError("Invalid durability policy: %s"%durability)
 
