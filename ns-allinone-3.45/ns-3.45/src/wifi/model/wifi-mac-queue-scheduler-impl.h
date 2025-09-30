@@ -417,6 +417,11 @@ WifiMacQueueSchedulerImpl<Priority, Compare>::InitQueueInfo(AcIndex ac, Ptr<cons
         // frame can only be sent on the corresponding link
         auto linkId = GetMac() ? GetMac()->GetLinkIdByAddress(mpdu->GetHeader().GetAddr2())
                                : SINGLE_LINK_OP_ID; // make unit test happy
+        // NS-3 3.45 TapBridge compatibility: if linkId is not found, default to SINGLE_LINK_OP_ID
+        if (!linkId.has_value())
+        {
+            linkId = SINGLE_LINK_OP_ID;
+        }
         NS_ASSERT(linkId.has_value());
         auto& linkIdsMap = queueInfoIt->second.linkIds;
         NS_ASSERT_MSG(linkIdsMap.size() <= 1,
