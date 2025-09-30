@@ -44,6 +44,7 @@ set(NS3_LIBRARIES
     ns3.45-wifi-${NS3_PROFILE}
     ns3.45-mobility-${NS3_PROFILE}
     ns3.45-tap-bridge-${NS3_PROFILE}
+    ns3.45-applications-${NS3_PROFILE}
 )
 
 include_directories(src ${NS3_INCLUDE_DIR})
