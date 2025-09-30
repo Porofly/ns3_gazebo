@@ -64,6 +64,12 @@ ament_target_dependencies(testbed_runner
   "rcutils"
   "std_msgs")
 
+# Set RPATH for proper library linking
+set_target_properties(testbed_runner PROPERTIES
+  INSTALL_RPATH "$ORIGIN"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+
 target_link_libraries(testbed_runner testbed_robot testbed_robot_callbacks
                                      setup_reader pipe_writer set_nns)
 
