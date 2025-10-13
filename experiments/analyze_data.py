@@ -87,19 +87,30 @@ class NS3GazeboDataAnalyzer:
 
     def plot_distance_vs_loss(self, output_path=None):
         """
-        Plot distance vs packet loss rate
+        Plot distance vs packet loss count
 
         Args:
             output_path: Path to save the plot (optional)
         """
         plt.figure(figsize=(10, 6))
-        plt.scatter(self.data['distance_to_base'], self.data['packet_loss_rate'],
+
+        # Use packets_lost if available, otherwise calculate from rate
+        if 'packets_lost' in self.data.columns:
+            loss_data = self.data['packets_lost']
+            ylabel = 'Packets Lost (count)'
+            title = 'Packet Loss Count vs Distance'
+        else:
+            # Fallback to rate for old CSV files
+            loss_data = self.data['packet_loss_rate']
+            ylabel = 'Packet Loss Rate (%)'
+            title = 'Packet Loss Rate vs Distance'
+
+        plt.scatter(self.data['distance_to_base'], loss_data,
                    alpha=0.6, s=20, color='red')
         plt.xlabel('Distance to Base Station (m)', fontsize=12)
-        plt.ylabel('Packet Loss Rate (%)', fontsize=12)
-        plt.title('Packet Loss Rate vs Distance', fontsize=14, fontweight='bold')
+        plt.ylabel(ylabel, fontsize=12)
+        plt.title(title, fontsize=14, fontweight='bold')
         plt.grid(True, alpha=0.3)
-        plt.ylim(-5, max(100, self.data['packet_loss_rate'].max() + 5))
 
         if output_path:
             plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -131,10 +142,15 @@ class NS3GazeboDataAnalyzer:
         axes[1].grid(True, alpha=0.3)
 
         # Packet loss over time
-        axes[2].plot(self.data['timestamp_sec'], self.data['packet_loss_rate'],
-                    linewidth=2, color='red')
+        if 'packets_lost' in self.data.columns:
+            axes[2].plot(self.data['timestamp_sec'], self.data['packets_lost'],
+                        linewidth=2, color='red')
+            axes[2].set_ylabel('Packets Lost (count)', fontsize=11)
+        else:
+            axes[2].plot(self.data['timestamp_sec'], self.data['packet_loss_rate'],
+                        linewidth=2, color='red')
+            axes[2].set_ylabel('Packet Loss (%)', fontsize=11)
         axes[2].set_xlabel('Time (seconds)', fontsize=11)
-        axes[2].set_ylabel('Packet Loss (%)', fontsize=11)
         axes[2].grid(True, alpha=0.3)
 
         plt.tight_layout()

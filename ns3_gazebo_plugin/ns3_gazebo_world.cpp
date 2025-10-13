@@ -277,7 +277,7 @@ class NS3GazeboWorld : public gz::sim::System,
 
       // Write CSV header
       logFile << "timestamp_sec,robot_x,robot_y,robot_z,distance_to_base,"
-              << "rssi_dbm,snr_db,packets_sent,packets_received,packet_loss_rate\n";
+              << "rssi_dbm,snr_db,packets_sent,packets_received,packets_lost,packet_loss_rate\n";
       logFile.flush();
 
       std::cout << "CSV logging enabled: " << logFilePath << "\n";
@@ -363,14 +363,17 @@ class NS3GazeboWorld : public gz::sim::System,
             uint64_t packetsSent = g_packetStats[1].packetsSent;
             uint64_t packetsReceived = g_packetStats[1].packetsReceived;
 
-            // Calculate loss rate (clamp to 0-100 range to handle counting anomalies)
+            // Calculate packet loss count and rate
+            uint64_t packetsLost = 0;
             double lossRate = 0.0;
             if (packetsSent > 0) {
               if (packetsReceived > packetsSent) {
                 // Sometimes received > sent due to timing/counting issues - treat as 0% loss
+                packetsLost = 0;
                 lossRate = 0.0;
               } else {
-                lossRate = 100.0 * (packetsSent - packetsReceived) / packetsSent;
+                packetsLost = packetsSent - packetsReceived;
+                lossRate = 100.0 * packetsLost / packetsSent;
               }
             }
 
@@ -385,7 +388,7 @@ class NS3GazeboWorld : public gz::sim::System,
                       << distance << ","
                       << rssi << "," << snr << ","
                       << packetsSent << "," << packetsReceived << ","
-                      << lossRate << "\n";
+                      << packetsLost << "," << lossRate << "\n";
               logFile.flush();
             }
 
