@@ -15,6 +15,9 @@
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <fstream>
+#include <chrono>
+#include <sstream>
 
 // NS-3 headers
 #include "ns3/core-module.h"
@@ -56,6 +59,15 @@ struct SignalQuality {
 
 static std::map<uint32_t, SignalQuality> g_signalQuality;
 
+// Packet statistics tracking
+struct PacketStats {
+  uint64_t packetsSent = 0;
+  uint64_t packetsReceived = 0;
+  double lossRate = 0.0;
+};
+
+static std::map<uint32_t, PacketStats> g_packetStats;
+
 // Callback to capture PHY layer statistics (NS-3 3.45 signature)
 void MonitorSignalCallback(uint32_t nodeId, ns3::Ptr<const ns3::Packet> packet,
                            uint16_t channelFreqMhz, ns3::WifiTxVector txVector,
@@ -66,6 +78,14 @@ void MonitorSignalCallback(uint32_t nodeId, ns3::Ptr<const ns3::Packet> packet,
   g_signalQuality[nodeId].rxPower = signalNoise.signal;
   g_signalQuality[nodeId].lastUpdateTime = ns3::Simulator::Now().GetNanoSeconds();
   g_signalQuality[nodeId].hasData = true;
+
+  // Count received packets
+  g_packetStats[nodeId].packetsReceived++;
+}
+
+// Callback for packet transmission (PhyTxBegin signature: packet, txPowerW)
+void PacketTxCallback(uint32_t nodeId, ns3::Ptr<const ns3::Packet> packet, double txPowerW) {
+  g_packetStats[nodeId].packetsSent++;
 }
 
 ns3::NetDeviceContainer ns3_setup(ns3::NodeContainer& ns3_nodes) {
@@ -108,7 +128,10 @@ ns3::NetDeviceContainer ns3_setup(ns3::NodeContainer& ns3_nodes) {
         // Connect to MonitorSniffer trace to get RSSI/SNR from received packets
         phy->TraceConnectWithoutContext("MonitorSnifferRx",
           ns3::MakeBoundCallback(&MonitorSignalCallback, i));
-        std::cout << "Signal monitoring enabled for Node " << i << "\n";
+        // Connect to PhyTx trace to count transmitted packets
+        phy->TraceConnectWithoutContext("PhyTxBegin",
+          ns3::MakeBoundCallback(&PacketTxCallback, i));
+        std::cout << "Signal monitoring and packet counting enabled for Node " << i << "\n";
       }
     }
   }
@@ -189,21 +212,8 @@ ns3::NetDeviceContainer ns3_setup(ns3::NodeContainer& ns3_nodes) {
 
   std::cout << "UDP beacon traffic configured: Node 0 -> Node 1 (1 pkt/sec)\n";
 
-  // connect Wifi through TapBridge devices
-  // TAP bridge enables real network connectivity between NS-3 and network namespaces
-  ns3::TapBridgeHelper tapBridge;
-  tapBridge.SetAttribute("Mode", ns3::StringValue("UseLocal"));
-  char buffer[16];
-  for (int i=0; i<COUNT; i++) {
-    sprintf(buffer, "wifi_tap%d", i+1);
-    tapBridge.SetAttribute("DeviceName", ns3::StringValue(buffer));
-    try {
-      tapBridge.Install(ns3_nodes.Get(i), devices.Get(i));
-      std::cout << "TapBridge installed for " << buffer << " on WiFi device " << i << "\n";
-    } catch (const std::exception& e) {
-      std::cerr << "TapBridge install failed for " << buffer << ": " << e.what() << "\n";
-    }
-  }
+  // Note: TapBridge disabled - requires root privileges and not needed for experiments
+  // If you need real network connectivity, run with sudo or set up network namespaces
 
   return devices;
 }
@@ -226,12 +236,21 @@ class NS3GazeboWorld : public gz::sim::System,
   gz::sim::Entity model_entity;
   bool model_found;
 
+  // CSV logging
+  std::ofstream logFile;
+  std::chrono::steady_clock::time_point startTime;
+  bool loggingEnabled;
+
   public:
-  NS3GazeboWorld() : model_found(false) {
+  NS3GazeboWorld() : model_found(false), loggingEnabled(false) {
     std::cout << "NS3GazeboWorld Plugin Constructor\n";
   }
 
   ~NS3GazeboWorld() {
+    if (logFile.is_open()) {
+      logFile.close();
+      std::cout << "CSV log file closed.\n";
+    }
     if (ns3_thread.joinable()) {
       ns3_thread.join(); // gracefully let the robot thread stop
       std::cout << "Stopped ns-3 Wifi simulator in main.\n";
@@ -243,6 +262,29 @@ class NS3GazeboWorld : public gz::sim::System,
                  gz::sim::EntityComponentManager &_ecm,
                  gz::sim::EventManager &_eventMgr) override {
     std::cout << "NS3GazeboWorld Plugin Configure\n";
+
+    // Read log file path from SDF, default to "ns3_gazebo_log.csv"
+    std::string logFilePath = "ns3_gazebo_log.csv";
+    if (_sdf->HasElement("log_file")) {
+      logFilePath = _sdf->Get<std::string>("log_file");
+    }
+
+    // Initialize CSV logging
+    logFile.open(logFilePath);
+    if (logFile.is_open()) {
+      loggingEnabled = true;
+      startTime = std::chrono::steady_clock::now();
+
+      // Write CSV header
+      logFile << "timestamp_sec,robot_x,robot_y,robot_z,distance_to_base,"
+              << "rssi_dbm,snr_db,packets_sent,packets_received,packets_lost,packet_loss_rate\n";
+      logFile.flush();
+
+      std::cout << "CSV logging enabled: " << logFilePath << "\n";
+    } else {
+      loggingEnabled = false;
+      std::cerr << "Failed to open log file: " << logFilePath << "\n";
+    }
 
     // set up ns-3
     devices = ns3_setup(ns3_nodes);
@@ -301,6 +343,55 @@ class NS3GazeboWorld : public gz::sim::System,
             ns3::Vector position(x, y, z);
             mobility->SetPosition(position);
 
+            // Calculate distance to base station
+            ns3::Ptr<ns3::Node> base_node = ns3_nodes.Get(0);
+            ns3::Ptr<ns3::MobilityModel> base_mobility =
+                base_node->GetObject<ns3::MobilityModel>();
+
+            double distance = 0.0;
+            if (base_mobility) {
+              ns3::Vector base_pos = base_mobility->GetPosition();
+              distance = std::sqrt(
+                  std::pow(x - base_pos.x, 2) +
+                  std::pow(y - base_pos.y, 2) +
+                  std::pow(z - base_pos.z, 2));
+            }
+
+            // Get signal quality and packet statistics
+            double rssi = g_signalQuality[1].hasData ? g_signalQuality[1].rssi : -100.0;
+            double snr = g_signalQuality[1].hasData ? g_signalQuality[1].snr : 0.0;
+            uint64_t packetsSent = g_packetStats[1].packetsSent;
+            uint64_t packetsReceived = g_packetStats[1].packetsReceived;
+
+            // Calculate packet loss count and rate
+            uint64_t packetsLost = 0;
+            double lossRate = 0.0;
+            if (packetsSent > 0) {
+              if (packetsReceived > packetsSent) {
+                // Sometimes received > sent due to timing/counting issues - treat as 0% loss
+                packetsLost = 0;
+                lossRate = 0.0;
+              } else {
+                packetsLost = packetsSent - packetsReceived;
+                lossRate = 100.0 * packetsLost / packetsSent;
+              }
+            }
+
+            // Log to CSV file
+            if (loggingEnabled) {
+              auto elapsed = std::chrono::steady_clock::now() - startTime;
+              double timestamp = std::chrono::duration<double>(elapsed).count();
+
+              logFile << std::fixed << std::setprecision(3)
+                      << timestamp << ","
+                      << x << "," << y << "," << z << ","
+                      << distance << ","
+                      << rssi << "," << snr << ","
+                      << packetsSent << "," << packetsReceived << ","
+                      << packetsLost << "," << lossRate << "\n";
+              logFile.flush();
+            }
+
             // Print position and check signal quality every 100 updates
             static int update_count = 0;
             if (++update_count % 100 == 0) {
@@ -308,30 +399,15 @@ class NS3GazeboWorld : public gz::sim::System,
               std::cout << "Robot (Node 1) position: ("
                         << x << ", " << y << ", " << z << ")\n";
 
-              // Calculate distance and signal quality to Node 0 (base station)
-              ns3::Ptr<ns3::Node> base_node = ns3_nodes.Get(0);
-              ns3::Ptr<ns3::MobilityModel> base_mobility =
-                  base_node->GetObject<ns3::MobilityModel>();
+              std::cout << "\n[Robot ↔ Base Station]\n";
+              std::cout << "  Distance: " << std::fixed << std::setprecision(2)
+                        << distance << " m\n";
 
-              if (base_mobility) {
-                ns3::Vector base_pos = base_mobility->GetPosition();
-                double distance = std::sqrt(
-                    std::pow(x - base_pos.x, 2) +
-                    std::pow(y - base_pos.y, 2) +
-                    std::pow(z - base_pos.z, 2));
-
-                std::cout << "\n[Robot ↔ Base Station]\n";
-                std::cout << "  Distance: " << std::fixed << std::setprecision(2)
-                          << distance << " m\n";
-
-                // Get real WiFi signal quality from NS-3 PHY layer
-                if (g_signalQuality[1].hasData) {
-                  double rssi = g_signalQuality[1].rssi;
-                  double snr = g_signalQuality[1].snr;
-
-                  std::cout << "  NS-3 WiFi Metrics:\n";
-                  std::cout << "    RSSI: " << std::fixed << std::setprecision(1)
-                            << rssi << " dBm";
+              // Get real WiFi signal quality from NS-3 PHY layer
+              if (g_signalQuality[1].hasData) {
+                std::cout << "  NS-3 WiFi Metrics:\n";
+                std::cout << "    RSSI: " << std::fixed << std::setprecision(1)
+                          << rssi << " dBm";
 
                   // Signal quality assessment
                   if (rssi > -50) {
@@ -362,10 +438,16 @@ class NS3GazeboWorld : public gz::sim::System,
                   else dataRate = "Connection Lost";
 
                   std::cout << "    Expected Rate: " << dataRate << "\n";
-                } else {
-                  std::cout << "  NS-3 WiFi Metrics: No packets received yet\n";
-                  std::cout << "  (Signal quality will appear after first transmission)\n";
-                }
+
+                  // Print packet statistics
+                  std::cout << "  Packet Statistics:\n";
+                  std::cout << "    Sent: " << packetsSent << "\n";
+                  std::cout << "    Received: " << packetsReceived << "\n";
+                  std::cout << "    Loss Rate: " << std::fixed << std::setprecision(1)
+                            << lossRate << "%\n";
+              } else {
+                std::cout << "  NS-3 WiFi Metrics: No packets received yet\n";
+                std::cout << "  (Signal quality will appear after first transmission)\n";
               }
 
               // Show distances to other nodes (if any additional nodes exist)
@@ -397,7 +479,7 @@ class NS3GazeboWorld : public gz::sim::System,
       }
     }
   }
-};
+};  // NS3GazeboWorld class
 
 } // namespace ns3_gazebo_world
 

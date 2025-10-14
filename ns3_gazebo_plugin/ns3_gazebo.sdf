@@ -16,9 +16,10 @@
     </plugin>
 
     <!-- NS-3 Gazebo World Plugin -->
-    <plugin 
+    <plugin
       name="ns3_gazebo_world::NS3GazeboWorld"
       filename="libns3_gazebo_world.so">
+      <log_file>test_verification.csv</log_file>
     </plugin>
 
     <!-- A directional light to mimic the sun -->
