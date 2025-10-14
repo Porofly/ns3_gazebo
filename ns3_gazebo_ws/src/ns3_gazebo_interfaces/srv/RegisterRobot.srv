@@ -1,0 +1,8 @@
+# Request: Register a Gazebo model with NS-3 node
+string model_name          # Name of the Gazebo model to register
+uint32 requested_node_id   # Desired NS-3 node ID (0 = auto-assign next available)
+---
+# Response
+bool success               # True if registration succeeded
+uint32 assigned_node_id    # The NS-3 node ID that was assigned
+string message             # Status message (error details if failed)

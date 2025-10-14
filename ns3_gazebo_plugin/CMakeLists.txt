@@ -5,12 +5,17 @@ project(ns3_gazebo_plugin)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find Gazebo Harmonic packages - use find_package without version first
+# Find Gazebo Harmonic packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GZ_SIM REQUIRED gz-sim8)
 pkg_check_modules(GZ_MATH REQUIRED gz-math7)
 pkg_check_modules(GZ_PLUGIN REQUIRED gz-plugin2)
 pkg_check_modules(SDFORMAT REQUIRED sdformat14)
+
+# Find ROS2 packages
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(ns3_gazebo_interfaces REQUIRED)
 
 # NS-3 path configuration
 set(NS3_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../ns-allinone-3.45/ns-3.45)
@@ -51,10 +56,20 @@ include_directories(src ${NS3_INCLUDE_DIR})
 link_directories(${NS3_LIBRARY_DIR})
 
 # Add Gazebo include directories and libraries
-include_directories(${GZ_SIM_INCLUDE_DIRS} ${GZ_MATH_INCLUDE_DIRS} ${GZ_PLUGIN_INCLUDE_DIRS} ${SDFORMAT_INCLUDE_DIRS})
-link_directories(${GZ_SIM_LIBRARY_DIRS} ${GZ_MATH_LIBRARY_DIRS} ${GZ_PLUGIN_LIBRARY_DIRS} ${SDFORMAT_LIBRARY_DIRS})
+include_directories(
+  ${GZ_SIM_INCLUDE_DIRS}
+  ${GZ_MATH_INCLUDE_DIRS}
+  ${GZ_PLUGIN_INCLUDE_DIRS}
+  ${SDFORMAT_INCLUDE_DIRS}
+)
+link_directories(
+  ${GZ_SIM_LIBRARY_DIRS}
+  ${GZ_MATH_LIBRARY_DIRS}
+  ${GZ_PLUGIN_LIBRARY_DIRS}
+  ${SDFORMAT_LIBRARY_DIRS}
+)
 
-# Build the NS3-Gazebo world plugin
+# Build the original NS3-Gazebo world plugin (without ROS2)
 add_library(ns3_gazebo_world SHARED ns3_gazebo_world.cpp)
 target_link_libraries(ns3_gazebo_world
   ${GZ_SIM_LIBRARIES}
@@ -62,6 +77,20 @@ target_link_libraries(ns3_gazebo_world
   ${GZ_PLUGIN_LIBRARIES}
   ${SDFORMAT_LIBRARIES}
   ${NS3_LIBRARIES}
+)
+
+# Build the ROS2-enabled NS3-Gazebo world plugin
+add_library(ns3_gazebo_world_ros2 SHARED ns3_gazebo_world_ros2.cpp)
+target_link_libraries(ns3_gazebo_world_ros2
+  ${GZ_SIM_LIBRARIES}
+  ${GZ_MATH_LIBRARIES}
+  ${GZ_PLUGIN_LIBRARIES}
+  ${SDFORMAT_LIBRARIES}
+  ${NS3_LIBRARIES}
+)
+ament_target_dependencies(ns3_gazebo_world_ros2
+  rclcpp
+  ns3_gazebo_interfaces
 )
 
 # Build the hello world plugin
@@ -73,3 +102,4 @@ target_link_libraries(hello_world
   ${SDFORMAT_LIBRARIES}
 )
 
+ament_package()

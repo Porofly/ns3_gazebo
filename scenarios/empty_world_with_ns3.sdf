@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="ns3_gazebo_world">
+    <!-- Physics Engine -->
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics">
+      <engine>
+        <filename>gz-physics-dartsim-plugin</filename>
+      </engine>
+    </plugin>
+
+    <!-- User Commands (for spawning/deleting entities) -->
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+
+    <!-- Scene Broadcaster -->
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+
+    <!-- NS-3 Gazebo World Plugin with ROS2 Integration -->
+    <plugin
+      name="ns3_gazebo_world::NS3GazeboWorld"
+      filename="libns3_gazebo_world_ros2.so">
+      <!-- Maximum number of NS-3 nodes in the pool -->
+      <max_nodes>100</max_nodes>
+
+      <!-- Base station configuration -->
+      <base_station_node_id>0</base_station_node_id>
+      <base_station_position>0 0 0</base_station_position>
+
+      <!-- CSV logging file path -->
+      <log_file>ns3_network_log.csv</log_file>
+    </plugin>
+
+    <!-- Lighting -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground Plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+            <specular>0.8 0.8 0.8 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Grid visualization (optional) -->
+    <model name="grid">
+      <static>true</static>
+      <link name="link">
+        <visual name="visual">
+          <cast_shadows>false</cast_shadows>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 0.3</ambient>
+            <diffuse>0.5 0.5 0.5 0.3</diffuse>
+            <specular>0.1 0.1 0.1 0.3</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
