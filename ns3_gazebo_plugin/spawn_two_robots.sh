@@ -5,7 +5,8 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORLD_NAME="ns3_gazebo_world"
-ROBOT_SDF="$SCRIPT_DIR/robot_model.sdf"
+ROBOT1_SDF="$SCRIPT_DIR/robot1_model.sdf"
+ROBOT2_SDF="$SCRIPT_DIR/robot2_model.sdf"
 
 echo "=== Spawning robots in Gazebo (from host) ==="
 echo "Note: Robots will be spawned in the main Gazebo world"
@@ -20,7 +21,7 @@ gz service -s /world/$WORLD_NAME/create \
   --reqtype gz.msgs.EntityFactory \
   --reptype gz.msgs.Boolean \
   --timeout 5000 \
-  --req "sdf_filename: \"$ROBOT_SDF\", name: \"robot1\", pose: {position: {x: -3.0, y: 0.0, z: 0.5}}" &
+  --req "sdf_filename: \"$ROBOT1_SDF\", name: \"robot1\", pose: {position: {x: -3.0, y: 0.0, z: 0.5}}" &
 PID1=$!
 
 sleep 2
@@ -30,7 +31,7 @@ gz service -s /world/$WORLD_NAME/create \
   --reqtype gz.msgs.EntityFactory \
   --reptype gz.msgs.Boolean \
   --timeout 5000 \
-  --req "sdf_filename: \"$ROBOT_SDF\", name: \"robot2\", pose: {position: {x: 3.0, y: 0.0, z: 0.5}}" &
+  --req "sdf_filename: \"$ROBOT2_SDF\", name: \"robot2\", pose: {position: {x: 3.0, y: 0.0, z: 0.5}}" &
 PID2=$!
 
 echo ""

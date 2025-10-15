@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+FastDDS Static Peers Configuration for HOST
+ROS 2 Jazzy + Fast-DDS compatible format
+
+Usage:
+  export FASTRTPS_DEFAULT_PROFILES_FILE=$(pwd)/fastdds_host.xml
+  export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  python3 relay_bridge.py robot1 robot2
+-->
+
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+
+    <participant profile_name="host_participant" is_default_profile="true">
+        <rtps>
+            <name>relay_bridge_host</name>
+
+            <builtin>
+                <!-- Initial Peers for Static Discovery -->
+                <initialPeersList>
+                    <!-- nns1 Direct Network IP -->
+                    <locator>
+                        <udpv4>
+                            <address>10.128.0.2</address>
+                        </udpv4>
+                    </locator>
+
+                    <!-- nns2 Direct Network IP -->
+                    <locator>
+                        <udpv4>
+                            <address>10.128.0.10</address>
+                        </udpv4>
+                    </locator>
+                </initialPeersList>
+
+                <!-- Metatraffic Unicast Locators -->
+                <metatrafficUnicastLocatorList>
+                    <locator>
+                        <udpv4>
+                            <address>10.128.0.1</address>
+                        </udpv4>
+                    </locator>
+                    <locator>
+                        <udpv4>
+                            <address>10.128.0.9</address>
+                        </udpv4>
+                    </locator>
+                </metatrafficUnicastLocatorList>
+            </builtin>
+
+            <!-- Default Unicast Locators for user data -->
+            <defaultUnicastLocatorList>
+                <locator>
+                    <udpv4>
+                        <address>10.128.0.1</address>
+                    </udpv4>
+                </locator>
+                <locator>
+                    <udpv4>
+                        <address>10.128.0.9</address>
+                    </udpv4>
+                </locator>
+            </defaultUnicastLocatorList>
+        </rtps>
+    </participant>
+
+</profiles>
