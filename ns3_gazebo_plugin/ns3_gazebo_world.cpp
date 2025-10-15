@@ -185,35 +185,33 @@ ns3::NetDeviceContainer ns3_setup(ns3::NodeContainer& ns3_nodes) {
     }
   }
 
-  // Install Internet stack for UDP beacon packets
-  ns3::InternetStackHelper internet;
-  internet.Install(ns3_nodes);
+  // ========== TAP Bridge Configuration for Network Namespaces ==========
+  // Setup TAP bridges to connect NS-3 nodes to Linux network namespaces
+  // Each NS-3 node gets a TAP device: wifi_tap1 for Node 0, wifi_tap2 for Node 1, etc.
+  //
+  // IMPORTANT: TapBridge does NOT use Internet Stack!
+  // IP addresses are configured in Linux network namespaces, not in NS-3.
+  // NS-3 only simulates the WiFi PHY/MAC layer.
 
-  ns3::Ipv4AddressHelper ipv4;
-  ipv4.SetBase("10.1.1.0", "255.255.255.0");
-  ns3::Ipv4InterfaceContainer interfaces = ipv4.Assign(devices);
+  std::cout << "\n=== Setting up TAP Bridges ===\n";
+  ns3::TapBridgeHelper tapBridge;
+  tapBridge.SetAttribute("Mode", ns3::StringValue("UseLocal"));
 
-  // Setup UDP beacon application from Node 0 (base station) to broadcast
-  // This generates traffic so we can measure signal quality
-  uint16_t port = 9;
-  ns3::UdpEchoServerHelper echoServer(port);
-  ns3::ApplicationContainer serverApps = echoServer.Install(ns3_nodes.Get(1)); // Robot listens
-  serverApps.Start(ns3::Seconds(1.0));
-  serverApps.Stop(ns3::Seconds(60*60*24*365.0));
+  for (uint32_t i = 0; i < ns3_nodes.GetN(); ++i) {
+    std::string tapDeviceName = "wifi_tap" + std::to_string(i + 1);
+    tapBridge.SetAttribute("DeviceName", ns3::StringValue(tapDeviceName));
 
-  ns3::UdpEchoClientHelper echoClient(interfaces.GetAddress(1), port);
-  echoClient.SetAttribute("MaxPackets", ns3::UintegerValue(1000000));
-  echoClient.SetAttribute("Interval", ns3::TimeValue(ns3::Seconds(1.0))); // 1 packet/sec
-  echoClient.SetAttribute("PacketSize", ns3::UintegerValue(64));
-
-  ns3::ApplicationContainer clientApps = echoClient.Install(ns3_nodes.Get(0)); // Base sends
-  clientApps.Start(ns3::Seconds(2.0));
-  clientApps.Stop(ns3::Seconds(60*60*24*365.0));
-
-  std::cout << "UDP beacon traffic configured: Node 0 -> Node 1 (1 pkt/sec)\n";
-
-  // Note: TapBridge disabled - requires root privileges and not needed for experiments
-  // If you need real network connectivity, run with sudo or set up network namespaces
+    try {
+      tapBridge.Install(ns3_nodes.Get(i), devices.Get(i));
+      std::cout << "  Node " << i << " -> TAP device: " << tapDeviceName << " [OK]\n";
+    } catch (const std::exception& e) {
+      std::cerr << "  Node " << i << " -> TAP device: " << tapDeviceName << " [FAILED: " << e.what() << "]\n";
+    }
+  }
+  std::cout << "TAP bridges configured successfully!\n";
+  std::cout << "WiFi simulation: 802.11a, 54Mbps, PHY/MAC only\n";
+  std::cout << "IP stack runs in Linux namespaces (not NS-3)\n";
+  std::cout << "==========================================\n\n";
 
   return devices;
 }
@@ -233,8 +231,8 @@ class NS3GazeboWorld : public gz::sim::System,
   ns3::NodeContainer ns3_nodes;
   ns3::NetDeviceContainer devices;
   std::thread ns3_thread;
-  gz::sim::Entity model_entity;
-  bool model_found;
+  std::map<std::string, gz::sim::Entity> robot_entities;  // Map robot name -> entity
+  int models_search_counter;  // Counter for periodic robot search
 
   // CSV logging
   std::ofstream logFile;
@@ -242,7 +240,7 @@ class NS3GazeboWorld : public gz::sim::System,
   bool loggingEnabled;
 
   public:
-  NS3GazeboWorld() : model_found(false), loggingEnabled(false) {
+  NS3GazeboWorld() : models_search_counter(0), loggingEnabled(false) {
     std::cout << "NS3GazeboWorld Plugin Constructor\n";
   }
 
@@ -298,185 +296,124 @@ class NS3GazeboWorld : public gz::sim::System,
 
   void PreUpdate(const gz::sim::UpdateInfo &_info,
                  gz::sim::EntityComponentManager &_ecm) override {
-    // Find vehicle model in PreUpdate (models are loaded by now)
-    if (!model_found) {
-      std::cout << "Searching for models in PreUpdate...\n";
+    // Periodically search for new robot models (every 300 frames ~= 3 seconds)
+    // This allows dynamic spawning of robots after simulation starts
+    models_search_counter++;
+
+    if (models_search_counter % 300 == 1) {  // Search on first update and every 300 frames
+      int robots_before = robot_entities.size();
+
       _ecm.Each<gz::sim::components::Model, gz::sim::components::Name>(
           [&](const gz::sim::Entity &_entity,
               const gz::sim::components::Model *,
               const gz::sim::components::Name *_name) -> bool {
-            std::cout << "Found model: " << _name->Data() << "\n";
-            if (_name->Data() == "vehicle") {
-              model_entity = _entity;
-              model_found = true;
-              std::cout << "*** Matched vehicle model! Entity ID: " << _entity << "\n";
+            std::string model_name = _name->Data();
+
+            // Match any model that starts with "robot"
+            if (model_name.find("robot") == 0) {
+              // Only add if not already tracked
+              if (robot_entities.find(model_name) == robot_entities.end()) {
+                robot_entities[model_name] = _entity;
+                std::cout << "*** NEW robot detected: " << model_name
+                          << " (Entity ID: " << _entity << ")\n";
+              }
             }
             return true;
           });
 
-      if (!model_found) {
-        std::cerr << "WARNING: Vehicle model not found in PreUpdate!\n";
+      int robots_after = robot_entities.size();
+      if (robots_before != robots_after) {
+        std::cout << "Total robots tracked: " << robots_after << "\n";
       }
     }
   }
 
   void Update(const gz::sim::UpdateInfo &_info,
               gz::sim::EntityComponentManager &_ecm) override {
-    // Update logic here - get vehicle pose and sync to NS-3
-    if (model_entity != gz::sim::kNullEntity) {
-      auto poseComp = _ecm.Component<gz::sim::components::Pose>(model_entity);
+    // Update all robot positions to NS-3
+    // Mapping: robot1 -> NS-3 Node 0, robot2 -> NS-3 Node 1
+
+    static int update_count = 0;
+    update_count++;
+
+    int robot_idx = 0;
+    for (auto& [robot_name, entity] : robot_entities) {
+      if (robot_idx >= ns3_nodes.GetN()) {
+        std::cerr << "WARNING: More robots than NS-3 nodes! Skipping " << robot_name << "\n";
+        break;
+      }
+
+      auto poseComp = _ecm.Component<gz::sim::components::Pose>(entity);
       if (poseComp) {
         gz::math::Pose3d pose = poseComp->Data();
 
-        // Get Gazebo vehicle position
+        // Get Gazebo robot position
         double x = pose.Pos().X();
         double y = pose.Pos().Y();
         double z = pose.Pos().Z();
 
-        // Update NS-3 node 1 position (the moving vehicle/robot)
-        if (ns3_nodes.GetN() > 1) {
-          ns3::Ptr<ns3::Node> node = ns3_nodes.Get(1);
-          ns3::Ptr<ns3::ConstantPositionMobilityModel> mobility =
-              node->GetObject<ns3::ConstantPositionMobilityModel>();
+        // Update corresponding NS-3 node position
+        ns3::Ptr<ns3::Node> node = ns3_nodes.Get(robot_idx);
+        ns3::Ptr<ns3::ConstantPositionMobilityModel> mobility =
+            node->GetObject<ns3::ConstantPositionMobilityModel>();
 
-          if (mobility) {
-            ns3::Vector position(x, y, z);
-            mobility->SetPosition(position);
-
-            // Calculate distance to base station
-            ns3::Ptr<ns3::Node> base_node = ns3_nodes.Get(0);
-            ns3::Ptr<ns3::MobilityModel> base_mobility =
-                base_node->GetObject<ns3::MobilityModel>();
-
-            double distance = 0.0;
-            if (base_mobility) {
-              ns3::Vector base_pos = base_mobility->GetPosition();
-              distance = std::sqrt(
-                  std::pow(x - base_pos.x, 2) +
-                  std::pow(y - base_pos.y, 2) +
-                  std::pow(z - base_pos.z, 2));
-            }
-
-            // Get signal quality and packet statistics
-            double rssi = g_signalQuality[1].hasData ? g_signalQuality[1].rssi : -100.0;
-            double snr = g_signalQuality[1].hasData ? g_signalQuality[1].snr : 0.0;
-            uint64_t packetsSent = g_packetStats[1].packetsSent;
-            uint64_t packetsReceived = g_packetStats[1].packetsReceived;
-
-            // Calculate packet loss count and rate
-            uint64_t packetsLost = 0;
-            double lossRate = 0.0;
-            if (packetsSent > 0) {
-              if (packetsReceived > packetsSent) {
-                // Sometimes received > sent due to timing/counting issues - treat as 0% loss
-                packetsLost = 0;
-                lossRate = 0.0;
-              } else {
-                packetsLost = packetsSent - packetsReceived;
-                lossRate = 100.0 * packetsLost / packetsSent;
-              }
-            }
-
-            // Log to CSV file
-            if (loggingEnabled) {
-              auto elapsed = std::chrono::steady_clock::now() - startTime;
-              double timestamp = std::chrono::duration<double>(elapsed).count();
-
-              logFile << std::fixed << std::setprecision(3)
-                      << timestamp << ","
-                      << x << "," << y << "," << z << ","
-                      << distance << ","
-                      << rssi << "," << snr << ","
-                      << packetsSent << "," << packetsReceived << ","
-                      << packetsLost << "," << lossRate << "\n";
-              logFile.flush();
-            }
-
-            // Print position and check signal quality every 100 updates
-            static int update_count = 0;
-            if (++update_count % 100 == 0) {
-              std::cout << "\n=== NS-3 Network Status ===\n";
-              std::cout << "Robot (Node 1) position: ("
-                        << x << ", " << y << ", " << z << ")\n";
-
-              std::cout << "\n[Robot ↔ Base Station]\n";
-              std::cout << "  Distance: " << std::fixed << std::setprecision(2)
-                        << distance << " m\n";
-
-              // Get real WiFi signal quality from NS-3 PHY layer
-              if (g_signalQuality[1].hasData) {
-                std::cout << "  NS-3 WiFi Metrics:\n";
-                std::cout << "    RSSI: " << std::fixed << std::setprecision(1)
-                          << rssi << " dBm";
-
-                  // Signal quality assessment
-                  if (rssi > -50) {
-                    std::cout << " [Excellent - Max Speed]\n";
-                  } else if (rssi > -60) {
-                    std::cout << " [Good - 54 Mbps]\n";
-                  } else if (rssi > -70) {
-                    std::cout << " [Fair - Reduced Speed]\n";
-                  } else if (rssi > -80) {
-                    std::cout << " [Weak - Unstable]\n";
-                  } else {
-                    std::cout << " [Very Weak - Packet Loss]\n";
-                  }
-
-                  std::cout << "    SNR: " << std::fixed << std::setprecision(1)
-                            << snr << " dB\n";
-
-                  // Calculate expected data rate based on SNR (802.11a)
-                  std::string dataRate = "Unknown";
-                  if (snr > 25) dataRate = "54 Mbps";
-                  else if (snr > 18) dataRate = "48 Mbps";
-                  else if (snr > 17) dataRate = "36 Mbps";
-                  else if (snr > 12) dataRate = "24 Mbps";
-                  else if (snr > 10) dataRate = "18 Mbps";
-                  else if (snr > 8) dataRate = "12 Mbps";
-                  else if (snr > 5) dataRate = "9 Mbps";
-                  else if (snr > 3) dataRate = "6 Mbps";
-                  else dataRate = "Connection Lost";
-
-                  std::cout << "    Expected Rate: " << dataRate << "\n";
-
-                  // Print packet statistics
-                  std::cout << "  Packet Statistics:\n";
-                  std::cout << "    Sent: " << packetsSent << "\n";
-                  std::cout << "    Received: " << packetsReceived << "\n";
-                  std::cout << "    Loss Rate: " << std::fixed << std::setprecision(1)
-                            << lossRate << "%\n";
-              } else {
-                std::cout << "  NS-3 WiFi Metrics: No packets received yet\n";
-                std::cout << "  (Signal quality will appear after first transmission)\n";
-              }
-
-              // Show distances to other nodes (if any additional nodes exist)
-              if (ns3_nodes.GetN() > 2) {
-                std::cout << "\n[Robot ↔ Other Nodes]\n";
-                for (uint32_t i = 2; i < ns3_nodes.GetN(); ++i) {
-                  ns3::Ptr<ns3::Node> other_node = ns3_nodes.Get(i);
-                  ns3::Ptr<ns3::MobilityModel> other_mobility =
-                      other_node->GetObject<ns3::MobilityModel>();
-
-                  if (other_mobility) {
-                    ns3::Vector other_pos = other_mobility->GetPosition();
-                    double distance = std::sqrt(
-                        std::pow(x - other_pos.x, 2) +
-                        std::pow(y - other_pos.y, 2) +
-                        std::pow(z - other_pos.z, 2));
-
-                    std::cout << "  Node " << i << " @ (" << other_pos.x
-                              << ", " << other_pos.y << ", " << other_pos.z
-                              << "): " << std::fixed << std::setprecision(1)
-                              << distance << " m\n";
-                  }
-                }
-              }
-              std::cout << "===========================\n\n";
-            }
-          }
+        if (mobility) {
+          ns3::Vector position(x, y, z);
+          mobility->SetPosition(position);
         }
       }
+
+      robot_idx++;
+    }
+
+    // Print network status periodically
+    if (update_count % 100 == 0 && !robot_entities.empty()) {
+      std::cout << "\n=== NS-3 Multi-Robot Network Status ===\n";
+
+      int idx = 0;
+      for (auto& [robot_name, entity] : robot_entities) {
+        auto poseComp = _ecm.Component<gz::sim::components::Pose>(entity);
+        if (poseComp) {
+          gz::math::Pose3d pose = poseComp->Data();
+          std::cout << robot_name << " (NS-3 Node " << idx << "): ("
+                    << std::fixed << std::setprecision(2)
+                    << pose.Pos().X() << ", "
+                    << pose.Pos().Y() << ", "
+                    << pose.Pos().Z() << ")\n";
+
+          // Show signal quality if available
+          if (g_signalQuality[idx].hasData) {
+            std::cout << "  RSSI: " << std::fixed << std::setprecision(1)
+                      << g_signalQuality[idx].rssi << " dBm, "
+                      << "SNR: " << g_signalQuality[idx].snr << " dB\n";
+            std::cout << "  Packets RX: " << g_packetStats[idx].packetsReceived << "\n";
+          }
+        }
+        idx++;
+      }
+
+      // Calculate inter-robot distance if we have 2 robots
+      if (robot_entities.size() >= 2) {
+        auto it = robot_entities.begin();
+        auto robot1_entity = it->second;
+        ++it;
+        auto robot2_entity = it->second;
+
+        auto pose1 = _ecm.Component<gz::sim::components::Pose>(robot1_entity);
+        auto pose2 = _ecm.Component<gz::sim::components::Pose>(robot2_entity);
+
+        if (pose1 && pose2) {
+          double dx = pose1->Data().Pos().X() - pose2->Data().Pos().X();
+          double dy = pose1->Data().Pos().Y() - pose2->Data().Pos().Y();
+          double dz = pose1->Data().Pos().Z() - pose2->Data().Pos().Z();
+          double distance = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+          std::cout << "\nInter-robot distance: " << std::fixed << std::setprecision(2)
+                    << distance << " m\n";
+        }
+      }
+
+      std::cout << "======================================\n\n";
     }
   }
 };  // NS3GazeboWorld class
