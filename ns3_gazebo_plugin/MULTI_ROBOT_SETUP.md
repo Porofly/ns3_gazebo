@@ -71,7 +71,6 @@ Inter-robot distance: 6.00 m
 
 ### 5. ROS2 Topic 통신 테스트
 
-#### 방법 1: 수동 테스트
 
 터미널 1 (robot1에서 publish):
 ```bash
@@ -87,13 +86,6 @@ sudo ip netns exec nns2 bash -c "
     source /opt/ros/jazzy/setup.bash
     ros2 topic echo /chatter
 "
-```
-
-#### 방법 2: 자동 테스트 스크립트
-
-```bash
-cd /home/user/realgazebo/ns3_gazebo/ns3_gazebo_plugin
-./test_ros2_communication.sh
 ```
 
 ### 6. Topic 리스트 확인

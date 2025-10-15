@@ -15,8 +15,6 @@
 #include <iostream>
 #include <iomanip>
 #include <cmath>
-#include <fstream>
-#include <chrono>
 #include <sstream>
 
 // NS-3 headers
@@ -234,21 +232,12 @@ class NS3GazeboWorld : public gz::sim::System,
   std::map<std::string, gz::sim::Entity> robot_entities;  // Map robot name -> entity
   int models_search_counter;  // Counter for periodic robot search
 
-  // CSV logging
-  std::ofstream logFile;
-  std::chrono::steady_clock::time_point startTime;
-  bool loggingEnabled;
-
   public:
-  NS3GazeboWorld() : models_search_counter(0), loggingEnabled(false) {
+  NS3GazeboWorld() : models_search_counter(0) {
     std::cout << "NS3GazeboWorld Plugin Constructor\n";
   }
 
   ~NS3GazeboWorld() {
-    if (logFile.is_open()) {
-      logFile.close();
-      std::cout << "CSV log file closed.\n";
-    }
     if (ns3_thread.joinable()) {
       ns3_thread.join(); // gracefully let the robot thread stop
       std::cout << "Stopped ns-3 Wifi simulator in main.\n";
@@ -260,29 +249,6 @@ class NS3GazeboWorld : public gz::sim::System,
                  gz::sim::EntityComponentManager &_ecm,
                  gz::sim::EventManager &_eventMgr) override {
     std::cout << "NS3GazeboWorld Plugin Configure\n";
-
-    // Read log file path from SDF, default to "ns3_gazebo_log.csv"
-    std::string logFilePath = "ns3_gazebo_log.csv";
-    if (_sdf->HasElement("log_file")) {
-      logFilePath = _sdf->Get<std::string>("log_file");
-    }
-
-    // Initialize CSV logging
-    logFile.open(logFilePath);
-    if (logFile.is_open()) {
-      loggingEnabled = true;
-      startTime = std::chrono::steady_clock::now();
-
-      // Write CSV header
-      logFile << "timestamp_sec,robot_x,robot_y,robot_z,distance_to_base,"
-              << "rssi_dbm,snr_db,packets_sent,packets_received,packets_lost,packet_loss_rate\n";
-      logFile.flush();
-
-      std::cout << "CSV logging enabled: " << logFilePath << "\n";
-    } else {
-      loggingEnabled = false;
-      std::cerr << "Failed to open log file: " << logFilePath << "\n";
-    }
 
     // set up ns-3
     devices = ns3_setup(ns3_nodes);
