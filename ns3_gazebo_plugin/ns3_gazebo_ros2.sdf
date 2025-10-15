@@ -15,13 +15,10 @@
       name="gz::sim::systems::SceneBroadcaster">
     </plugin>
 
-    <!-- ROS2 Bridge will be run separately as a ROS2 node -->
-
     <!-- NS-3 Gazebo World Plugin -->
     <plugin
       name="ns3_gazebo_world::NS3GazeboWorld"
       filename="libns3_gazebo_world.so">
-      <log_file>ns3_gazebo_ros2_log.csv</log_file>
     </plugin>
 
     <!-- A directional light to mimic the sun -->

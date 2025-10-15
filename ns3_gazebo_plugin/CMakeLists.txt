@@ -15,7 +15,6 @@ pkg_check_modules(SDFORMAT REQUIRED sdformat14)
 # Find ROS2 packages
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(ns3_gazebo_interfaces REQUIRED)
 
 # NS-3 path configuration
 set(NS3_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../ns-allinone-3.45/ns-3.45)
@@ -77,29 +76,6 @@ target_link_libraries(ns3_gazebo_world
   ${GZ_PLUGIN_LIBRARIES}
   ${SDFORMAT_LIBRARIES}
   ${NS3_LIBRARIES}
-)
-
-# Build the ROS2-enabled NS3-Gazebo world plugin
-add_library(ns3_gazebo_world_ros2 SHARED ns3_gazebo_world_ros2.cpp)
-target_link_libraries(ns3_gazebo_world_ros2
-  ${GZ_SIM_LIBRARIES}
-  ${GZ_MATH_LIBRARIES}
-  ${GZ_PLUGIN_LIBRARIES}
-  ${SDFORMAT_LIBRARIES}
-  ${NS3_LIBRARIES}
-)
-ament_target_dependencies(ns3_gazebo_world_ros2
-  rclcpp
-  ns3_gazebo_interfaces
-)
-
-# Build the hello world plugin
-add_library(hello_world SHARED hello_world.cpp)
-target_link_libraries(hello_world
-  ${GZ_SIM_LIBRARIES}
-  ${GZ_MATH_LIBRARIES}
-  ${GZ_PLUGIN_LIBRARIES}
-  ${SDFORMAT_LIBRARIES}
 )
 
 ament_package()

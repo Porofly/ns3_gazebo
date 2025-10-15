@@ -1,6 +1,0 @@
-# Request: Unregister a Gazebo model from NS-3
-string model_name          # Name of the Gazebo model to unregister
----
-# Response
-bool success               # True if unregistration succeeded
-string message             # Status message
