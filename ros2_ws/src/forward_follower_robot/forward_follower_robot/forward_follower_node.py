@@ -18,6 +18,9 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 import time
+import math
+import csv
+import os
 
 
 class ForwardFollowerRobot(Node):
@@ -32,16 +35,28 @@ class ForwardFollowerRobot(Node):
         # Declare parameters
         self.declare_parameter('leader_state_topic', '/robot1/state')
         self.declare_parameter('follower_cmd_vel_topic', '/robot2/cmd_vel')
+        self.declare_parameter('follower_odom_topic', '/robot2/odometry')
         self.declare_parameter('base_linear_x', 1.0)  # Constant forward velocity
         self.declare_parameter('angular_scale', 1.0)  # Scale for angular velocity
         self.declare_parameter('timeout_threshold', 1.0)  # Communication timeout in seconds
 
+        # Statistics parameters
+        self.declare_parameter('enable_statistics', True)
+        self.declare_parameter('csv_output_file', '/tmp/follower_stats.csv')
+        self.declare_parameter('statistics_rate', 1.0)  # Hz
+
         # Get parameters
         leader_state_topic = self.get_parameter('leader_state_topic').value
         follower_cmd_vel_topic = self.get_parameter('follower_cmd_vel_topic').value
+        follower_odom_topic = self.get_parameter('follower_odom_topic').value
         self.base_linear_x = self.get_parameter('base_linear_x').value
         self.angular_scale = self.get_parameter('angular_scale').value
         self.timeout_threshold = self.get_parameter('timeout_threshold').value
+
+        # Statistics parameters
+        self.enable_statistics = self.get_parameter('enable_statistics').value
+        self.csv_output_file = self.get_parameter('csv_output_file').value
+        self.statistics_rate = self.get_parameter('statistics_rate').value
 
         # Communication state
         self.leader_angular_z = 0.0
@@ -49,11 +64,32 @@ class ForwardFollowerRobot(Node):
         self.last_state_time = None
         self.communication_status = "NO_COMMUNICATION"
 
+        # Statistics data
+        self.packet_count = 0
+        self.leader_position = None  # From leader state message
+        self.follower_position = None  # From follower odometry
+        self.current_distance = None
+        self.start_time = time.time()
+
+        # CSV file handler
+        self.csv_file = None
+        self.csv_writer = None
+        if self.enable_statistics:
+            self._init_csv_file()
+
         # Subscriber to leader's state (via WiFi/NS-3)
         self.leader_state_sub = self.create_subscription(
             Odometry,
             leader_state_topic,
             self.leader_state_callback,
+            10
+        )
+
+        # Subscriber to follower's odometry (via Direct Network)
+        self.follower_odom_sub = self.create_subscription(
+            Odometry,
+            follower_odom_topic,
+            self.follower_odom_callback,
             10
         )
 
@@ -67,13 +103,21 @@ class ForwardFollowerRobot(Node):
         # Timer to publish cmd_vel at 10 Hz
         self.cmd_vel_timer = self.create_timer(0.1, self.publish_cmd_vel)
 
+        # Timer for statistics logging
+        if self.enable_statistics:
+            stats_period = 1.0 / self.statistics_rate
+            self.statistics_timer = self.create_timer(stats_period, self.log_statistics)
+
         self.get_logger().info(
             f'Forward Follower Robot Node Started\n'
             f'  Subscribing to: {leader_state_topic} (WiFi via NS-3)\n'
+            f'  Subscribing to: {follower_odom_topic} (Direct Network)\n'
             f'  Publishing to: {follower_cmd_vel_topic} (Direct Network → Gazebo)\n'
             f'  Base forward velocity: {self.base_linear_x} m/s\n'
             f'  Angular velocity scale: {self.angular_scale}\n'
-            f'  Timeout threshold: {self.timeout_threshold} seconds'
+            f'  Timeout threshold: {self.timeout_threshold} seconds\n'
+            f'  Statistics enabled: {self.enable_statistics}\n'
+            f'  CSV output file: {self.csv_output_file if self.enable_statistics else "N/A"}'
         )
 
         self.get_logger().info(
@@ -86,13 +130,47 @@ class ForwardFollowerRobot(Node):
             '========================================\n'
         )
 
+    def _init_csv_file(self):
+        """Initialize CSV file for statistics logging"""
+        try:
+            # Create directory if it doesn't exist
+            csv_dir = os.path.dirname(self.csv_output_file)
+            if csv_dir and not os.path.exists(csv_dir):
+                os.makedirs(csv_dir)
+
+            self.csv_file = open(self.csv_output_file, 'w', newline='')
+            self.csv_writer = csv.writer(self.csv_file)
+            # Write header
+            self.csv_writer.writerow([
+                'timestamp', 'elapsed_time_s', 'distance_m', 'packet_count',
+                'communication_status', 'linear_x', 'angular_z'
+            ])
+            self.csv_file.flush()
+            self.get_logger().info(f'CSV statistics file created: {self.csv_output_file}')
+        except Exception as e:
+            self.get_logger().error(f'Failed to create CSV file: {e}')
+            self.enable_statistics = False
+
+    def follower_odom_callback(self, msg: Odometry):
+        """
+        Callback for follower's odometry (received via Direct Network from Gazebo).
+        Stores follower's current position for distance calculation.
+        """
+        self.follower_position = msg.pose.pose.position
+
     def leader_state_callback(self, msg: Odometry):
         """
         Callback for leader's state messages (received via WiFi/NS-3).
         Extracts angular velocity (rotation) and updates communication timestamp.
         """
+        # Count packets received
+        self.packet_count += 1
+
         # Extract angular velocity from leader's state
         self.leader_angular_z = msg.twist.twist.angular.z * self.angular_scale
+
+        # Store leader position for distance calculation
+        self.leader_position = msg.pose.pose.position
 
         # Update communication timestamp
         self.last_state_time = time.time()
@@ -105,7 +183,8 @@ class ForwardFollowerRobot(Node):
         self._leader_log_counter += 1
         if self._leader_log_counter % 20 == 0:  # Log every 20th message
             self.get_logger().info(
-                f'[WiFi/NS-3] Leader state received: angular.z={msg.twist.twist.angular.z:.3f} rad/s',
+                f'[WiFi/NS-3] Leader state received: angular.z={msg.twist.twist.angular.z:.3f} rad/s, '
+                f'packet_count={self.packet_count}',
                 throttle_duration_sec=2.0
             )
 
@@ -171,6 +250,59 @@ class ForwardFollowerRobot(Node):
                     throttle_duration_sec=5.0
                 )
 
+    def calculate_distance(self):
+        """
+        Calculate Euclidean distance between leader and follower robots.
+        Returns distance in meters, or None if positions are not available.
+        """
+        if self.leader_position is None or self.follower_position is None:
+            return None
+
+        dx = self.leader_position.x - self.follower_position.x
+        dy = self.leader_position.y - self.follower_position.y
+        dz = self.leader_position.z - self.follower_position.z
+
+        distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+        return distance
+
+    def log_statistics(self):
+        """
+        Timer callback to log statistics at specified rate.
+        Logs to console and CSV file if enabled.
+        """
+        # Calculate current distance
+        self.current_distance = self.calculate_distance()
+
+        # Calculate elapsed time
+        elapsed_time = time.time() - self.start_time
+
+        # Prepare statistics data
+        distance_str = f'{self.current_distance:.3f}' if self.current_distance is not None else 'N/A'
+
+        # Log to console
+        self.get_logger().info(
+            f'[STATS] Time: {elapsed_time:.1f}s | Distance: {distance_str}m | '
+            f'Packets: {self.packet_count} | Status: {self.communication_status} | '
+            f'linear.x: {self.current_linear_x:.2f} | angular.z: {self.leader_angular_z:.2f}',
+            throttle_duration_sec=0.5
+        )
+
+        # Write to CSV if enabled
+        if self.enable_statistics and self.csv_writer is not None:
+            try:
+                self.csv_writer.writerow([
+                    time.time(),  # timestamp
+                    elapsed_time,  # elapsed_time_s
+                    self.current_distance if self.current_distance is not None else '',  # distance_m
+                    self.packet_count,  # packet_count
+                    self.communication_status,  # communication_status
+                    self.current_linear_x,  # linear_x
+                    self.leader_angular_z  # angular_z
+                ])
+                self.csv_file.flush()
+            except Exception as e:
+                self.get_logger().error(f'Failed to write to CSV: {e}')
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -184,6 +316,15 @@ def main(args=None):
         # Stop the follower robot before exiting
         twist = Twist()
         node.cmd_vel_pub.publish(twist)
+
+        # Close CSV file if open
+        if node.csv_file is not None:
+            try:
+                node.csv_file.close()
+                node.get_logger().info(f'CSV statistics file closed: {node.csv_output_file}')
+            except Exception as e:
+                node.get_logger().error(f'Failed to close CSV file: {e}')
+
         node.get_logger().info('Forward Follower Robot Node Stopped')
         node.destroy_node()
         rclpy.shutdown()
