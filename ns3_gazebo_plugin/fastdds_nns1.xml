@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+FastDDS Static Peers Configuration for NNS1
+ROS 2 Jazzy + Fast-DDS compatible format
+
+Usage (inside nns1):
+  export FASTRTPS_DEFAULT_PROFILES_FILE=/path/to/fastdds_nns1.xml
+  export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  source /opt/ros/jazzy/setup.bash
+-->
+
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+
+    <participant profile_name="nns1_participant" is_default_profile="true">
+        <rtps>
+            <name>nns1_ros2_node</name>
+
+            <builtin>
+                <!-- Initial Peers - HOST on Direct Network + nns2 on WiFi -->
+                <initialPeersList>
+                    <!-- Host Direct Network IP (direct_br1) -->
+                    <locator>
+                        <udpv4>
+                            <address>10.128.0.1</address>
+                        </udpv4>
+                    </locator>
+
+                    <!-- nns2 WiFi Network IP (via NS-3) -->
+                    <locator>
+                        <udpv4>
+                            <address>10.0.0.4</address>
+                        </udpv4>
+                    </locator>
+                </initialPeersList>
+
+                <!-- Metatraffic Unicast on Direct Network + WiFi -->
+                <metatrafficUnicastLocatorList>
+                    <locator>
+                        <udpv4>
+                            <address>10.128.0.2</address>
+                        </udpv4>
+                    </locator>
+                    <locator>
+                        <udpv4>
+                            <address>10.0.0.1</address>
+                        </udpv4>
+                    </locator>
+                </metatrafficUnicastLocatorList>
+            </builtin>
+
+            <!-- User Data Unicast on Direct Network + WiFi -->
+            <defaultUnicastLocatorList>
+                <locator>
+                    <udpv4>
+                        <address>10.128.0.2</address>
+                    </udpv4>
+                </locator>
+                <locator>
+                    <udpv4>
+                        <address>10.0.0.1</address>
+                    </udpv4>
+                </locator>
+            </defaultUnicastLocatorList>
+        </rtps>
+    </participant>
+
+</profiles>
