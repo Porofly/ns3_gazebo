@@ -107,6 +107,7 @@ For those who want to get running quickly:
 cd ns-allinone-3.45/ns-3.45
 
 ./ns3 configure --enable-examples --enable-tests
+# Build Options : --build-profile=<option> (default, ebug, optimized, ...)
 
 ./ns3 build
 
